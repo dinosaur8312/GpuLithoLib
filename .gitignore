@@ -1,0 +1,105 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# Compiled object files
+*.o
+*.obj
+*.lo
+*.slo
+*.ko
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Shared libraries
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Static libraries
+*.a
+*.la
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# CUDA compilation
+*.cubin
+*.fatbin
+*.ptx
+*.sass
+*.compute_*
+
+# CMake generated files (but keep source CMakeLists.txt)
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Output files (but keep important .txt source files)
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.tiff
+*.log
+# Ignore output .txt files but not source files
+*_result.txt
+*_output.txt
+test_*.txt
+debug_*.txt
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Package files
+*.tar.gz
+*.zip
+*.7z
+*.rar
+
+# Test files (keep source test files but ignore generated test outputs)
+test_output/
+test_results/
