@@ -99,15 +99,18 @@ int main() {
     std::cout << "XOR result: " << xorResult.getPolygonCount() << " polygons, "
               << xorResult.getVertexCount() << " vertices\n";
     
+    // === Geometric Operations ===
+    // NOTE: Offset operations are commented out for now
+    /*
     std::cout << "\n=== Geometric Operations ===\n";
-    
+
     // Offset operations
     Layer positiveOffset = engine.layerOffset(rectangleLayer, 50);  // Grow by 50 pixels
     std::cout << "Positive offset (+50) result: " << positiveOffset.getPolygonCount() << " polygons\n";
-    
-    Layer negativeOffset = engine.layerOffset(rectangleLayer, -30); // Shrink by 30 pixels  
+
+    Layer negativeOffset = engine.layerOffset(rectangleLayer, -30); // Shrink by 30 pixels
     std::cout << "Negative offset (-30) result: " << negativeOffset.getPolygonCount() << " polygons\n";
-    
+    */
     std::cout << "\n=== Visualization and Output ===\n";
     
     // Create visualizations for input layers
@@ -128,8 +131,9 @@ int main() {
     engine.visualizeLayer(unionResult, "union_result.png");
     engine.visualizeLayer(differenceResult, "difference_result.png");
     engine.visualizeLayer(xorResult, "xor_result.png");
-    engine.visualizeLayer(positiveOffset, "positive_offset.png");
-    engine.visualizeLayer(negativeOffset, "negative_offset.png");
+    // Offset visualizations commented out
+    // engine.visualizeLayer(positiveOffset, "positive_offset.png");
+    // engine.visualizeLayer(negativeOffset, "negative_offset.png");
     std::cout << "Visualization images saved\n";
     
     // Export results to files
@@ -230,8 +234,11 @@ int main() {
         std::cout << "Using synthetic layers - no ground truth comparison available\n";
     }
     
+    // === Complex Workflow Example ===
+    // NOTE: Workflow example with offset is commented out for now
+    /*
     std::cout << "\n=== Complex Workflow Example ===\n";
-    
+
     // Example of a more complex workflow
     // Step 1: Create base patterns
     GeometryConfig basePattern;
@@ -240,9 +247,9 @@ int main() {
     basePattern.centerY = 2500;
     basePattern.radius = 300;
     basePattern.numSides = 8;  // Octagon
-    
+
     Layer baseLayer = engine.createLayerFromGeometry(basePattern);
-    
+
     // Step 2: Create masking pattern
     GeometryConfig maskPattern;
     maskPattern.shape = GeometryConfig::RECTANGLE;
@@ -250,40 +257,41 @@ int main() {
     maskPattern.centerY = 2500;
     maskPattern.width = 400;
     maskPattern.height = 200;
-    
+
     Layer maskLayer = engine.createLayerFromGeometry(maskPattern);
-    
+
     // Step 3: Apply mask (intersection)
     Layer maskedLayer = engine.layerIntersection(baseLayer, maskLayer);
     std::cout << "Step 1 - Masked layer: " << maskedLayer.getPolygonCount() << " polygons\n";
-    
+
     // Step 4: Apply positive offset
     Layer offsetMasked = engine.layerOffset(maskedLayer, 20);
     std::cout << "Step 2 - Offset masked: " << offsetMasked.getPolygonCount() << " polygons\n";
-    
+
     // Step 5: Combine with original base
     Layer finalResult = engine.layerUnion(baseLayer, offsetMasked);
     std::cout << "Step 3 - Final result: " << finalResult.getPolygonCount() << " polygons\n";
-    
+
     // Visualize workflow steps
     engine.visualizeLayer(baseLayer, "workflow_step1_base.png");
     engine.visualizeLayer(maskLayer, "workflow_step2_mask.png");
     engine.visualizeLayer(maskedLayer, "workflow_step3_masked.png");
     engine.visualizeLayer(offsetMasked, "workflow_step4_offset.png");
     engine.visualizeLayer(finalResult, "workflow_step5_final.png");
-    
+
     engine.dumpLayerToFile(finalResult, "workflow_final_result.txt", 0);
     std::cout << "Workflow visualization and results saved\n";
+    */
     
     std::cout << "\n=== Performance Statistics ===\n";
     engine.printPerformanceStats();
-    
-    // Demonstrate layer properties
+
+    // Demonstrate layer properties using XOR result
     std::cout << "\n=== Layer Properties ===\n";
-    auto bbox = finalResult.getBoundingBox();
-    std::cout << "Final result bounding box: (" << bbox[0] << ", " << bbox[1] 
+    auto bbox = xorResult.getBoundingBox();
+    std::cout << "XOR result bounding box: (" << bbox[0] << ", " << bbox[1]
               << ") to (" << bbox[2] << ", " << bbox[3] << ")\n";
-    
+
     auto gridSize = engine.getCurrentGridSize();
     std::cout << "Engine grid size: " << gridSize[0] << " x " << gridSize[1] << "\n";
     
