@@ -76,6 +76,42 @@ public:
      */
     std::vector<unsigned int> getBoundingBox() const;
 
+    /**
+     * @brief Get host vertex buffer pointer (read-only)
+     * @return Pointer to host vertex array (uint2*), or nullptr if layer is empty
+     */
+    const uint2* getHostVertices() const;
+
+    /**
+     * @brief Get host start indices buffer pointer (read-only)
+     * @return Pointer to host start indices array, or nullptr if layer is empty
+     */
+    const unsigned int* getHostStartIndices() const;
+
+    /**
+     * @brief Get host vertex counts buffer pointer (read-only)
+     * @return Pointer to host vertex counts array, or nullptr if layer is empty
+     */
+    const unsigned int* getHostPtCounts() const;
+
+    /**
+     * @brief Get device vertex buffer pointer (read-only)
+     * @return Pointer to device vertex array (uint2*), or nullptr if layer is empty
+     */
+    const uint2* getDeviceVertices() const;
+
+    /**
+     * @brief Get device start indices buffer pointer (read-only)
+     * @return Pointer to device start indices array, or nullptr if layer is empty
+     */
+    const unsigned int* getDeviceStartIndices() const;
+
+    /**
+     * @brief Get device vertex counts buffer pointer (read-only)
+     * @return Pointer to device vertex counts array, or nullptr if layer is empty
+     */
+    const unsigned int* getDevicePtCounts() const;
+
 private:
     friend class GpuLithoEngine;
     std::unique_ptr<LayerImpl> impl;
@@ -154,7 +190,33 @@ public:
      * @return Layer handle
      */
     Layer createLayerFromGeometry(const GeometryConfig& config);
-    
+
+    /**
+     * @brief Create layer from host vertex data
+     * @param h_vertices Pointer to vertex array on host (uint2 array)
+     * @param h_startIndices Pointer to start indices array on host
+     * @param h_ptCounts Pointer to vertex counts array on host
+     * @param polygonCount Number of polygons
+     * @return Layer handle (vertexCount calculated internally from h_ptCounts)
+     */
+    Layer createLayerFromHostData(const uint2* h_vertices,
+                                   const unsigned int* h_startIndices,
+                                   const unsigned int* h_ptCounts,
+                                   unsigned int polygonCount);
+
+    /**
+     * @brief Create layer from device vertex data
+     * @param d_vertices Pointer to vertex array on device (uint2 array)
+     * @param d_startIndices Pointer to start indices array on device
+     * @param d_ptCounts Pointer to vertex counts array on device
+     * @param polygonCount Number of polygons
+     * @return Layer handle (vertexCount calculated internally from d_ptCounts)
+     */
+    Layer createLayerFromDeviceData(const uint2* d_vertices,
+                                     const unsigned int* d_startIndices,
+                                     const unsigned int* d_ptCounts,
+                                     unsigned int polygonCount);
+
     // === Layer Preparation ===
     
     /**

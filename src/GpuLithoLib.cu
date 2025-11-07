@@ -133,6 +133,30 @@ std::vector<unsigned int> Layer::getBoundingBox() const {
     return impl ? impl->getBoundingBox() : std::vector<unsigned int>{0, 0, 0, 0};
 }
 
+const uint2* Layer::getHostVertices() const {
+    return impl ? impl->h_vertices : nullptr;
+}
+
+const unsigned int* Layer::getHostStartIndices() const {
+    return impl ? impl->h_startIndices : nullptr;
+}
+
+const unsigned int* Layer::getHostPtCounts() const {
+    return impl ? impl->h_ptCounts : nullptr;
+}
+
+const uint2* Layer::getDeviceVertices() const {
+    return impl ? impl->d_vertices : nullptr;
+}
+
+const unsigned int* Layer::getDeviceStartIndices() const {
+    return impl ? impl->d_startIndices : nullptr;
+}
+
+const unsigned int* Layer::getDevicePtCounts() const {
+    return impl ? impl->d_ptCounts : nullptr;
+}
+
 //==============================================================================
 // GpuLithoEngine implementation
 //==============================================================================
@@ -1158,6 +1182,97 @@ Layer GpuLithoEngine::createLayerFromGeometry(const GeometryConfig& config) {
         }
     }
     
+    return Layer(std::move(layerImpl));
+}
+
+Layer GpuLithoEngine::createLayerFromHostData(const uint2* h_vertices,
+                                               const unsigned int* h_startIndices,
+                                               const unsigned int* h_ptCounts,
+                                               unsigned int polygonCount) {
+    if (!h_vertices || !h_startIndices || !h_ptCounts || polygonCount == 0) {
+        std::cerr << "Error: Invalid input data for createLayerFromHostData" << std::endl;
+        return Layer();
+    }
+
+    // Calculate total vertex count from h_ptCounts
+    unsigned int totalVertexCount = 0;
+    for (unsigned int i = 0; i < polygonCount; ++i) {
+        totalVertexCount += h_ptCounts[i];
+    }
+
+    if (totalVertexCount == 0) {
+        std::cerr << "Error: Total vertex count is zero" << std::endl;
+        return Layer();
+    }
+
+    auto layerImpl = std::make_unique<LayerImpl>(totalVertexCount, polygonCount);
+
+    // Copy data to layer
+    layerImpl->polygonCount = polygonCount;
+    layerImpl->vertexCount = totalVertexCount;
+
+    // Copy vertices
+    std::memcpy(layerImpl->h_vertices, h_vertices, totalVertexCount * sizeof(uint2));
+
+    // Copy start indices
+    std::memcpy(layerImpl->h_startIndices, h_startIndices, polygonCount * sizeof(unsigned int));
+
+    // Copy vertex counts
+    std::memcpy(layerImpl->h_ptCounts, h_ptCounts, polygonCount * sizeof(unsigned int));
+
+    return Layer(std::move(layerImpl));
+}
+
+Layer GpuLithoEngine::createLayerFromDeviceData(const uint2* d_vertices,
+                                                 const unsigned int* d_startIndices,
+                                                 const unsigned int* d_ptCounts,
+                                                 unsigned int polygonCount) {
+    if (!d_vertices || !d_startIndices || !d_ptCounts || polygonCount == 0) {
+        std::cerr << "Error: Invalid input data for createLayerFromDeviceData" << std::endl;
+        return Layer();
+    }
+
+    // First, copy d_ptCounts to host to calculate total vertex count
+    std::vector<unsigned int> h_ptCounts_temp(polygonCount);
+    CHECK_GPU_ERROR(gpuMemcpy(h_ptCounts_temp.data(), d_ptCounts,
+                              polygonCount * sizeof(unsigned int),
+                              gpuMemcpyDeviceToHost));
+
+    // Calculate total vertex count
+    unsigned int totalVertexCount = 0;
+    for (unsigned int i = 0; i < polygonCount; ++i) {
+        totalVertexCount += h_ptCounts_temp[i];
+    }
+
+    if (totalVertexCount == 0) {
+        std::cerr << "Error: Total vertex count is zero" << std::endl;
+        return Layer();
+    }
+
+    auto layerImpl = std::make_unique<LayerImpl>(totalVertexCount, polygonCount);
+
+    // Set metadata
+    layerImpl->polygonCount = polygonCount;
+    layerImpl->vertexCount = totalVertexCount;
+
+    // Copy device data to layer's device buffers
+    layerImpl->allocateDevice();
+
+    CHECK_GPU_ERROR(gpuMemcpy(layerImpl->d_vertices, d_vertices,
+                              totalVertexCount * sizeof(uint2),
+                              gpuMemcpyDeviceToDevice));
+
+    CHECK_GPU_ERROR(gpuMemcpy(layerImpl->d_startIndices, d_startIndices,
+                              polygonCount * sizeof(unsigned int),
+                              gpuMemcpyDeviceToDevice));
+
+    CHECK_GPU_ERROR(gpuMemcpy(layerImpl->d_ptCounts, d_ptCounts,
+                              polygonCount * sizeof(unsigned int),
+                              gpuMemcpyDeviceToDevice));
+
+    // Copy to host as well
+    layerImpl->copyToHost();
+
     return Layer(std::move(layerImpl));
 }
 

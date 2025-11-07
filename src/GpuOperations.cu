@@ -34,10 +34,10 @@ __global__ void rayCasting_kernel(
         boxWidth = box.z - box.x;
         boxHeight = box.w - box.y;
         
-        if (ptCount > 512) {
-            printf("Warning: rayCasting_kernel, polygonIdx: %d, ptCount: %d exceeds limit\n", polygonIdx, ptCount);
-            return;
-        }
+    }
+    if (ptCount > 512) {
+        printf("Warning: rayCasting_kernel, polygonIdx: %d, ptCount: %d exceeds limit\n", polygonIdx, ptCount);
+        return;
     }
 
     if (threadIdx.x < ptCount) {
