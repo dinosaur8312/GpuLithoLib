@@ -8,10 +8,26 @@
 #include <set>
 #include <map>
 #include <cmath>
+#include <thrust/device_vector.h>
+#include <thrust/device_ptr.h>
+#include <thrust/copy.h>
+#include <thrust/sort.h>
+#include <thrust/unique.h>
+#include <thrust/iterator/transform_iterator.h>
 
 namespace GpuLithoLib {
 
 using gpuLitho::OperationType;
+
+// Functor for filtering intersection pixels (both subject_id and clipper_id non-zero)
+struct IsIntersectionPixel {
+    __host__ __device__
+    bool operator()(unsigned int pixel_value) const {
+        unsigned int subject_id = pixel_value & 0xFFFF;
+        unsigned int clipper_id = (pixel_value >> 16) & 0xFFFF;
+        return (subject_id > 0) && (clipper_id > 0);
+    }
+};
 
 // === Intersection Point Computation ===
 
@@ -493,32 +509,58 @@ public:
     std::map<std::pair<unsigned int, unsigned int>, std::set<IntersectionPoint>>
     computeAllIntersectionPoints(LayerImpl* outputLayer, LayerImpl* subjectLayer, LayerImpl* clipperLayer) {
         std::map<std::pair<unsigned int, unsigned int>, std::set<IntersectionPoint>> intersection_points_set;
-        
+
         if (!outputLayer || !subjectLayer || !clipperLayer) {
             std::cerr << "Error: Null layer in computeAllIntersectionPoints" << std::endl;
             return intersection_points_set;
         }
-        
-        // Step 1: Extract intersecting polygon pairs from overlay bitmap
+
+        // Step 1: Extract intersecting polygon pairs from overlay bitmap using GPU
+        // This is much more efficient than CPU loop + memcpy
         std::set<std::pair<unsigned int, unsigned int>> intersecting_pairs;
-        
-        // Ensure bitmap data is on host
-        outputLayer->copyBitmapToHost();
-        
-        // Scan through bitmap to find intersecting pairs
-        for (unsigned int y = 0; y < currentGridHeight; ++y) {
-            for (unsigned int x = 0; x < currentGridWidth; ++x) {
-                unsigned int pixel_value = outputLayer->h_bitmap[y * currentGridWidth + x];
-                
-                // Extract subject and clipper polygon IDs
-                unsigned int subject_id = pixel_value & 0xFFFF;        // Lower 16 bits
-                unsigned int clipper_id = (pixel_value >> 16) & 0xFFFF; // Upper 16 bits
-                
-                // Check if this pixel represents an intersection (both IDs non-zero)
-                if (subject_id > 0 && clipper_id > 0) {
-                    intersecting_pairs.insert(std::make_pair(subject_id, clipper_id));
-                }
-            }
+    
+        unsigned int totalPixels = currentGridWidth * currentGridHeight;
+        if (totalPixels == 0 || !outputLayer->d_bitmap) {
+            std::cerr << "Warning: No bitmap data available for intersection extraction" << std::endl;
+            return intersection_points_set;
+        }
+    
+        // Create device vector view of the bitmap
+        thrust::device_ptr<unsigned int> d_bitmap_ptr(outputLayer->d_bitmap);
+
+        // Step 1a: Use thrust::copy_if to compact only intersection pixels
+        // The bitmap already contains packed pairs: clipper_id (upper 16 bits) | subject_id (lower 16 bits)
+        // We just need to filter pixels where both IDs are non-zero
+        thrust::device_vector<unsigned int> d_packed_pairs(totalPixels);
+
+        auto compact_end = thrust::copy_if(
+            d_bitmap_ptr,                    // First iterator: start of bitmap
+            d_bitmap_ptr + totalPixels,      // Last iterator: end of bitmap
+            d_packed_pairs.begin(),          // Output destination
+            IsIntersectionPixel()            // Predicate functor
+        );
+    
+        // Resize to actual compacted size (remove unused capacity)
+        auto compact_size = static_cast<size_t>(compact_end - d_packed_pairs.begin());
+        d_packed_pairs.resize(compact_size);
+
+        // Step 1b: Sort using radix sort (optimal for GPUs)
+        thrust::sort(d_packed_pairs.begin(), d_packed_pairs.end());
+
+        // Step 1c: Remove duplicates to get unique pairs
+        auto unique_end = thrust::unique(d_packed_pairs.begin(), d_packed_pairs.end());
+        auto unique_size = static_cast<size_t>(unique_end - d_packed_pairs.begin());
+        d_packed_pairs.resize(unique_size);
+
+        // Step 1d: Copy unique pairs back to host (minimal transfer - only unique pairs)
+        std::vector<unsigned int> h_packed_pairs(d_packed_pairs.size());
+        thrust::copy(d_packed_pairs.begin(), d_packed_pairs.end(), h_packed_pairs.begin());
+
+        // Unpack pairs and insert into set
+        for (unsigned int packed_pair : h_packed_pairs) {
+            unsigned int subject_id = packed_pair & 0xFFFF;
+            unsigned int clipper_id = (packed_pair >> 16) & 0xFFFF;
+            intersecting_pairs.insert(std::make_pair(subject_id, clipper_id));
         }
         
         // Step 2: Compute intersection points for each intersecting polygon pair
