@@ -556,56 +556,120 @@ public:
         std::vector<unsigned int> h_packed_pairs(d_packed_pairs.size());
         thrust::copy(d_packed_pairs.begin(), d_packed_pairs.end(), h_packed_pairs.begin());
 
+        // Step 2: Compute intersection points for each intersecting polygon pair using GPU
+        const unsigned int MAX_INTERSECTIONS_PER_PAIR = 32;
+        unsigned int numPairs = d_packed_pairs.size();
+
+        if (numPairs > 0) {
+            // Allocate device memory for intersection points output
+            // 2D array: [numPairs][32] intersection points
+            thrust::device_vector<IntersectionPointData> d_intersection_points(numPairs * MAX_INTERSECTIONS_PER_PAIR);
+            thrust::device_vector<unsigned int> d_intersection_counts(numPairs);
+
+            // Launch kernel: one block per intersecting pair
+            dim3 blockSize(256);  // 256 threads per block
+            dim3 gridSize(numPairs);
+
+            computeIntersectionPoints_kernel<<<gridSize, blockSize>>>(
+                thrust::raw_pointer_cast(d_packed_pairs.data()),
+                numPairs,
+                subjectLayer->d_vertices,
+                subjectLayer->d_startIndices,
+                subjectLayer->d_ptCounts,
+                clipperLayer->d_vertices,
+                clipperLayer->d_startIndices,
+                clipperLayer->d_ptCounts,
+                thrust::raw_pointer_cast(d_intersection_points.data()),
+                thrust::raw_pointer_cast(d_intersection_counts.data()));
+
+            CHECK_GPU_ERROR(gpuGetLastError());
+            CHECK_GPU_ERROR(gpuDeviceSynchronize());
+
+            // Copy results back to host
+            std::vector<IntersectionPointData> h_intersection_points(d_intersection_points.size());
+            std::vector<unsigned int> h_intersection_counts(d_intersection_counts.size());
+
+            thrust::copy(d_intersection_points.begin(), d_intersection_points.end(), h_intersection_points.begin());
+            thrust::copy(d_intersection_counts.begin(), d_intersection_counts.end(), h_intersection_counts.begin());
+
+            // Convert results to the map structure
+            for (unsigned int pairIdx = 0; pairIdx < numPairs; ++pairIdx) {
+                unsigned int packed_pair = h_packed_pairs[pairIdx];
+                unsigned int subject_id = packed_pair & 0xFFFF;
+                unsigned int clipper_id = (packed_pair >> 16) & 0xFFFF;
+
+                unsigned int count = h_intersection_counts[pairIdx];
+                if (count > 0) {
+                    std::set<IntersectionPoint> pair_intersections;
+
+                    for (unsigned int i = 0; i < count; ++i) {
+                        unsigned int dataIdx = pairIdx * MAX_INTERSECTIONS_PER_PAIR + i;
+                        const auto& pt = h_intersection_points[dataIdx];
+
+                        pair_intersections.emplace(
+                            pt.x,
+                            pt.y,
+                            pt.distanceThreshold,
+                            PointType::REAL_INTERSECTION);
+                    }
+
+                    intersection_points_set[std::make_pair(subject_id, clipper_id)] = std::move(pair_intersections);
+                }
+            }
+        }
+
+        /*
+        // OLD CPU CODE - Commented out for reference
         // Unpack pairs and insert into set
         for (unsigned int packed_pair : h_packed_pairs) {
             unsigned int subject_id = packed_pair & 0xFFFF;
             unsigned int clipper_id = (packed_pair >> 16) & 0xFFFF;
             intersecting_pairs.insert(std::make_pair(subject_id, clipper_id));
         }
-        
+
         // Step 2: Compute intersection points for each intersecting polygon pair
         // This implements the real edge-edge intersection algorithm with angle-weighted thresholds
         for (const auto& pair : intersecting_pairs) {
             unsigned int subject_id = pair.first - 1;  // Convert from 1-based to 0-based
             unsigned int clipper_id = pair.second - 1;
-            
+
             if (subject_id >= subjectLayer->polygonCount || clipper_id >= clipperLayer->polygonCount) {
                 continue;
             }
-            
+
             std::set<IntersectionPoint> pair_intersections;
-            
+
             // Get polygon vertex data
             unsigned int subject_start = subjectLayer->h_startIndices[subject_id];
             unsigned int subject_count = subjectLayer->h_ptCounts[subject_id];
             unsigned int clipper_start = clipperLayer->h_startIndices[clipper_id];
             unsigned int clipper_count = clipperLayer->h_ptCounts[clipper_id];
-            
+
             // Compute real edge-edge intersections with angle-weighted thresholds
             for (unsigned int si = 0; si < subject_count; ++si) {
                 unsigned int next_si = (si + 1) % subject_count;
-                
+
                 cv::Point2f s1(subjectLayer->h_vertices[subject_start + si].x,
                                subjectLayer->h_vertices[subject_start + si].y);
                 cv::Point2f s2(subjectLayer->h_vertices[subject_start + next_si].x,
                                subjectLayer->h_vertices[subject_start + next_si].y);
-                
+
                 for (unsigned int ci = 0; ci < clipper_count; ++ci) {
                     unsigned int next_ci = (ci + 1) % clipper_count;
-                    
+
                     cv::Point2f c1(clipperLayer->h_vertices[clipper_start + ci].x,
                                    clipperLayer->h_vertices[clipper_start + ci].y);
                     cv::Point2f c2(clipperLayer->h_vertices[clipper_start + next_ci].x,
                                    clipperLayer->h_vertices[clipper_start + next_ci].y);
-                    
+
                     // Compute line intersection
                     cv::Point2f intersection;
                     double angle_degrees = 90.0; // Default to perpendicular
-                    
+
                     if (computeLineIntersection(s1, s2, c1, c2, intersection, angle_degrees)) {
                         // Calculate threshold based on angle (matches original algorithm)
                         float threshold = calculateDistanceThreshold(angle_degrees);
-                        
+
                         // Add intersection point with calculated threshold
                         pair_intersections.emplace(
                             static_cast<unsigned int>(std::round(intersection.x)),
@@ -616,13 +680,14 @@ public:
                     }
                 }
             }
-            
+
             // Only store pairs that have real intersections
             if (!pair_intersections.empty()) {
                 intersection_points_set[pair] = std::move(pair_intersections);
             }
         }
-        
+        */
+
         return intersection_points_set;
     }
     
