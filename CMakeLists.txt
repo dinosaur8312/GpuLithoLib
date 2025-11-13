@@ -27,6 +27,8 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 set(LIBRARY_SOURCES
     src/LayerImpl.cu
     src/GpuOperations.cu
+    src/IntersectionCompute.cu
+    src/ContourProcessing.cu
     src/GpuLithoLib.cu
     src/operation_types.cu
 )
@@ -44,9 +46,12 @@ target_link_libraries(GpuLithoLib
 # Set properties for CUDA compilation
 set_property(TARGET GpuLithoLib PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 
-# Example executable
+# Example executables
 add_executable(example_usage examples/example_usage.cu)
 target_link_libraries(example_usage GpuLithoLib)
+
+add_executable(test_intersection examples/test_intersection.cu)
+target_link_libraries(test_intersection GpuLithoLib)
 
 # Copy operation types source file
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/operation_types.h ${CMAKE_CURRENT_BINARY_DIR}/operation_types.h COPYONLY)

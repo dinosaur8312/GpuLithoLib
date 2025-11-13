@@ -105,4 +105,38 @@ __global__ void computeIntersectionPoints_kernel(
     IntersectionPointData* outputPoints,
     unsigned int* outputCounts);
 
+// Forward declarations for contour tracing structures
+struct GroupInfo;
+struct ContourPoint;
+
+/**
+ * @brief GPU kernel for parallel contour tracing using Suzuki-Abe algorithm
+ * Each block processes one pixel value group (one contour component)
+ * Uses 4-connectivity border following
+ *
+ * @param contourBitmap Input contour bitmap with pixel values
+ * @param sortedIndices Array of pixel indices sorted by value
+ * @param sortedValues Array of pixel values (sorted)
+ * @param groups Array of group information (value, startIdx, count)
+ * @param numGroups Number of groups to process
+ * @param visited Visited flags for each pixel in sortedIndices
+ * @param outputContours Output array for traced contour points [numGroups * maxPoints]
+ * @param outputCounts Number of points traced for each group
+ * @param width Bitmap width
+ * @param height Bitmap height
+ * @param maxPointsPerContour Maximum points per contour (e.g., 10000)
+ */
+__global__ void traceContoursParallel_kernel(
+    const unsigned int* contourBitmap,
+    const unsigned int* sortedIndices,
+    const unsigned int* sortedValues,
+    const GroupInfo* groups,
+    const unsigned int numGroups,
+    unsigned char* visited,
+    ContourPoint* outputContours,
+    unsigned int* outputCounts,
+    const unsigned int width,
+    const unsigned int height,
+    const unsigned int maxPointsPerContour);
+
 } // namespace GpuLithoLib

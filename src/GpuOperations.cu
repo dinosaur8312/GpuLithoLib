@@ -461,4 +461,248 @@ __global__ void computeIntersectionPoints_kernel(
     }
 }
 
+// ============================================================================
+// Contour Tracing Kernel (Suzuki-Abe Algorithm)
+// ============================================================================
+
+// Forward declare structures needed for contour tracing
+struct ContourPoint {
+    unsigned int x;
+    unsigned int y;
+};
+
+struct GroupInfo {
+    unsigned int value;
+    unsigned int startIdx;
+    unsigned int count;
+};
+
+// Device helper: Get pixel at bitmap location
+__device__ inline unsigned int getBitmapPixel(
+    const unsigned int* bitmap,
+    int x, int y,
+    unsigned int width,
+    unsigned int height)
+{
+    if (x < 0 || x >= width || y < 0 || y >= height) {
+        return 0;
+    }
+    return bitmap[y * width + x];
+}
+
+// Device helper: Find index in sortedIndices for a given bitmap index
+__device__ inline int findSortedIndex(
+    const unsigned int* sortedIndices,
+    unsigned int targetIdx,
+    unsigned int groupStart,
+    unsigned int groupCount)
+{
+    for (unsigned int i = 0; i < groupCount; ++i) {
+        if (sortedIndices[groupStart + i] == targetIdx) {
+            return groupStart + i;
+        }
+    }
+    return -1;
+}
+
+// Device function: Trace one contour using Suzuki-Abe 4-connectivity border following
+__device__ void traceOneContour(
+    const unsigned int* contourBitmap,
+    const unsigned int* sortedIndices,
+    unsigned int startSortedIdx,
+    unsigned int targetValue,
+    unsigned int groupStart,
+    unsigned int groupCount,
+    unsigned char* visited,
+    ContourPoint* outputContour,
+    unsigned int* outputCount,
+    unsigned int width,
+    unsigned int height,
+    unsigned int maxPoints,
+    unsigned int groupIdx,
+    unsigned int contourIdx)
+{
+    // Get starting pixel location
+    unsigned int startIdx = sortedIndices[startSortedIdx];
+    unsigned int startX = startIdx % width;
+    unsigned int startY = startIdx / width;
+
+    // Debug output for first block only
+    bool debug = (groupIdx == 0);
+
+    // Direction vectors for 8-connectivity (E, SE, S, SW, W, NW, N, NE)
+    // Clockwise order starting from right (East)
+    const int dx[8] = {1, 1, 0, -1, -1, -1, 0, 1};
+    const int dy[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+
+    unsigned int currentX = startX;
+    unsigned int currentY = startY;
+    int currentDir = 0; // Start looking right (East)
+
+    unsigned int pointCount = 0;
+
+    if (debug) {
+        printf("[Group %u, Contour %u] Starting trace at (%u, %u), targetValue=%u\n",
+               groupIdx, contourIdx, startX, startY, targetValue);
+    }
+
+    // Add starting point
+    if (pointCount < maxPoints) {
+        outputContour[pointCount].x = currentX;
+        outputContour[pointCount].y = currentY;
+        pointCount++;
+        if (debug) {
+            printf("  Point %u: (%u, %u)\n", pointCount - 1, currentX, currentY);
+        }
+    }
+
+    // Mark as visited
+    visited[startSortedIdx] = 1;
+
+    // Border following loop
+    bool firstMove = true;
+    unsigned int iterCount = 0;
+    const unsigned int maxIter = width * height * 4; // Safety limit
+
+    while (iterCount < maxIter) {
+        iterCount++;
+
+        // Search for next contour pixel in clockwise order
+        // For 8-connectivity, start from 2 positions counter-clockwise
+        int searchDir = (currentDir + 6) % 8; // Start searching counter-clockwise
+        bool found = false;
+
+        for (int i = 0; i < 8; ++i) {
+            int checkDir = (searchDir + i) % 8;
+            int nextX = currentX + dx[checkDir];
+            int nextY = currentY + dy[checkDir];
+
+            // Check if this pixel is part of the contour
+            unsigned int pixelValue = getBitmapPixel(
+                contourBitmap, nextX, nextY, width, height);
+
+            if (pixelValue == targetValue) {
+                // Found next contour pixel
+                currentX = nextX;
+                currentY = nextY;
+                currentDir = checkDir;
+                found = true;
+
+                // Check if we've returned to start
+                if (!firstMove && currentX == startX && currentY == startY) {
+                    // Closed contour
+                    *outputCount = pointCount;
+                    if (debug) {
+                        printf("[Group %u, Contour %u] Closed contour with %u points\n",
+                               groupIdx, contourIdx, pointCount);
+                    }
+                    return;
+                }
+                firstMove = false;
+
+                // Add point to contour
+                if (pointCount < maxPoints) {
+                    outputContour[pointCount].x = currentX;
+                    outputContour[pointCount].y = currentY;
+                    if (debug) {
+                        printf("  Point %u: (%u, %u)\n", pointCount, currentX, currentY);
+                    }
+                    pointCount++;
+                }
+
+                // Mark as visited
+                unsigned int currentIdx = currentY * width + currentX;
+                int sortedIdx = findSortedIndex(
+                    sortedIndices, currentIdx, groupStart, groupCount);
+                if (sortedIdx >= 0) {
+                    visited[sortedIdx] = 1;
+                }
+
+                break;
+            }
+        }
+
+        if (!found) {
+            // No neighbor found, end tracing
+            if (debug) {
+                printf("[Group %u, Contour %u] No neighbor found, ending trace with %u points\n",
+                       groupIdx, contourIdx, pointCount);
+            }
+            break;
+        }
+    }
+
+    *outputCount = pointCount;
+    if (debug && pointCount > 0) {
+        printf("[Group %u, Contour %u] Trace complete, total points: %u\n",
+               groupIdx, contourIdx, pointCount);
+    }
+}
+
+// Main kernel: Each block processes one group
+__global__ void traceContoursParallel_kernel(
+    const unsigned int* contourBitmap,
+    const unsigned int* sortedIndices,
+    const unsigned int* sortedValues,
+    const GroupInfo* groups,
+    const unsigned int numGroups,
+    unsigned char* visited,
+    ContourPoint* outputContours,
+    unsigned int* outputCounts,
+    const unsigned int width,
+    const unsigned int height,
+    const unsigned int maxPointsPerContour)
+{
+    unsigned int groupIdx = blockIdx.x;
+
+    if (groupIdx >= numGroups) {
+        return;
+    }
+
+    // Get group info
+    GroupInfo group = groups[groupIdx];
+    unsigned int targetValue = group.value;
+    unsigned int groupStart = group.startIdx;
+    unsigned int groupCount = group.count;
+
+    // Each thread in the block tries to find an unvisited pixel to start tracing
+    // This handles multiple disjoint contours within the same group
+    unsigned int contourCount = 0;
+    const unsigned int maxContoursPerGroup = 32; // Safety limit
+
+    // Only thread 0 does the tracing (serial within block for now)
+    if (threadIdx.x == 0) {
+        // Scan through all pixels in this group
+        for (unsigned int i = 0; i < groupCount && contourCount < maxContoursPerGroup; ++i) {
+            unsigned int sortedIdx = groupStart + i;
+
+            // Check if already visited
+            if (visited[sortedIdx] == 0) {
+                // Start a new contour from this pixel
+                unsigned int localCount = 0;
+                ContourPoint* contourOutput = outputContours + groupIdx * maxPointsPerContour;
+
+                traceOneContour(
+                    contourBitmap,
+                    sortedIndices,
+                    sortedIdx,
+                    targetValue,
+                    groupStart,
+                    groupCount,
+                    visited,
+                    contourOutput + outputCounts[groupIdx], // Append to existing
+                    &localCount,
+                    width,
+                    height,
+                    maxPointsPerContour - outputCounts[groupIdx],
+                    groupIdx,
+                    contourCount);
+
+                outputCounts[groupIdx] += localCount;
+                contourCount++;
+            }
+        }
+    }
+}
+
 } // namespace GpuLithoLib
