@@ -5,7 +5,8 @@
 
 #ifdef __HIP_PLATFORM_AMD__
     #include <hip/hip_runtime.h>
-    
+    #include <hip/hip_vector_types.h>
+
     // HIP type definitions
     #define gpuError_t hipError_t
     #define gpuSuccess hipSuccess
@@ -21,7 +22,7 @@
     #define gpuMemset hipMemset
     #define gpuMemGetInfo hipMemGetInfo
     #define gpuSetDevice hipSetDevice
-    
+
     // Event definitions
     #define gpuEvent_t hipEvent_t
     #define gpuEventCreate hipEventCreate
@@ -29,13 +30,23 @@
     #define gpuEventSynchronize hipEventSynchronize
     #define gpuEventElapsedTime hipEventElapsedTime
     #define gpuEventDestroy hipEventDestroy
-    
+
     // Warp functions
     #define __syncwarp(mask) __syncthreads()
-    
+
+    // Vector type helpers (HIP uses the same names as CUDA)
+    // Just ensure they're available
+    using ::uint2;
+    using ::uint4;
+    using ::int2;
+    using ::make_uint2;
+    using ::make_uint4;
+    using ::make_int2;
+
 #else
     #include <cuda_runtime.h>
-    
+    #include <vector_types.h>
+
     // CUDA type definitions
     #define gpuError_t cudaError_t
     #define gpuSuccess cudaSuccess
@@ -51,7 +62,7 @@
     #define gpuMemset cudaMemset
     #define gpuMemGetInfo cudaMemGetInfo
     #define gpuSetDevice cudaSetDevice
-    
+
     // Event definitions
     #define gpuEvent_t cudaEvent_t
     #define gpuEventCreate cudaEventCreate
@@ -59,7 +70,7 @@
     #define gpuEventSynchronize cudaEventSynchronize
     #define gpuEventElapsedTime cudaEventElapsedTime
     #define gpuEventDestroy cudaEventDestroy
-    
+
 #endif
 
 #include <iostream>

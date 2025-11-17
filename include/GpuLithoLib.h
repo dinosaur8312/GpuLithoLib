@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include "gpuLitho.h"
 #include "operation_types.h"
 
 namespace GpuLithoLib {

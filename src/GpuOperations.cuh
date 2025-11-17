@@ -45,17 +45,6 @@ __global__ void overlay_kernel(
     int height);
 
 /**
- * @brief Contour extraction kernel using 4-connectivity
- */
-__global__ void extractContours_kernel(
-    const unsigned int* inputBitmap,
-    unsigned int* contourBitmap,
-    const int width,
-    const int height,
-    const int chunkDim,
-    OperationType opType);
-
-/**
  * @brief Offset kernel using edge convolution
  */
 __global__ void offset_kernel(
@@ -77,6 +66,13 @@ struct IntersectionPointData {
     float distanceThreshold;
 };
 
+// Device helper functions for intersection computation
+__device__ float calculateDistanceThreshold_device(float angle_degrees);
+__device__ bool computeLineIntersection_device(
+    float p1x, float p1y, float p2x, float p2y,
+    float p3x, float p3y, float p4x, float p4y,
+    float& intersectX, float& intersectY, float& angle_degrees);
+
 /**
  * @brief Compute intersection points for polygon pairs on GPU
  * Each block handles one intersecting pair
@@ -92,51 +88,11 @@ struct IntersectionPointData {
  * @param clipperPtCounts Clipper layer vertex counts (device)
  * @param outputPoints 2D array [numPairs][32] for intersection points (device)
  * @param outputCounts Array [numPairs] for actual count per pair (device)
- */
-__global__ void computeIntersectionPoints_kernel(
-    const unsigned int* packedPairs,
-    const unsigned int numPairs,
-    const uint2* subjectVertices,
-    const unsigned int* subjectStartIndices,
-    const unsigned int* subjectPtCounts,
-    const uint2* clipperVertices,
-    const unsigned int* clipperStartIndices,
-    const unsigned int* clipperPtCounts,
-    IntersectionPointData* outputPoints,
-    unsigned int* outputCounts);
-
-// Forward declarations for contour tracing structures
-struct GroupInfo;
-struct ContourPoint;
-
-/**
- * @brief GPU kernel for parallel contour tracing using Suzuki-Abe algorithm
- * Each block processes one pixel value group (one contour component)
- * Uses 4-connectivity border following
  *
- * @param contourBitmap Input contour bitmap with pixel values
- * @param sortedIndices Array of pixel indices sorted by value
- * @param sortedValues Array of pixel values (sorted)
- * @param groups Array of group information (value, startIdx, count)
- * @param numGroups Number of groups to process
- * @param visited Visited flags for each pixel in sortedIndices
- * @param outputContours Output array for traced contour points [numGroups * maxPoints]
- * @param outputCounts Number of points traced for each group
- * @param width Bitmap width
- * @param height Bitmap height
- * @param maxPointsPerContour Maximum points per contour (e.g., 10000)
+ * NOTE: Kernel declarations moved to appropriate files:
+ * - computeIntersectionPoints_kernel -> IntersectionCompute.cuh
+ * - extractContours_kernel -> ContourProcessing.cuh
+ * - traceContoursParallel_kernel -> ContourProcessing.cuh
  */
-__global__ void traceContoursParallel_kernel(
-    const unsigned int* contourBitmap,
-    const unsigned int* sortedIndices,
-    const unsigned int* sortedValues,
-    const GroupInfo* groups,
-    const unsigned int numGroups,
-    unsigned char* visited,
-    ContourPoint* outputContours,
-    unsigned int* outputCounts,
-    const unsigned int width,
-    const unsigned int height,
-    const unsigned int maxPointsPerContour);
 
 } // namespace GpuLithoLib

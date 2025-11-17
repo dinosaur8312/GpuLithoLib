@@ -58,6 +58,14 @@ struct GroupInfo {
     unsigned int count;        // Number of pixels in this group
 };
 
+// Structure to hold collected polygon IDs for a contour
+struct ContourPolygonIDs {
+    unsigned int subject_ids[256];    // Buffer for unique subject IDs
+    unsigned int clipper_ids[256];    // Buffer for unique clipper IDs
+    unsigned int subject_count;        // Number of unique subject IDs
+    unsigned int clipper_count;        // Number of unique clipper IDs
+};
+
 // ContourDetectEngine: Manages contour detection and simplification
 class ContourDetectEngine {
 public:
@@ -127,8 +135,43 @@ public:
     std::vector<std::vector<cv::Point>> traceContoursGPU(
         const SortedContourPixels& sortedPixels,
         const unsigned int* contourBitmap,
+        const unsigned int* overlayBitmap,
         unsigned int width,
         unsigned int height);
 };
+
+// ============================================================================
+// GPU Kernel Declarations (implementations in ContourProcessing.cu)
+// ============================================================================
+
+/**
+ * @brief Extract contour pixels from overlay bitmap
+ */
+__global__ void extractContours_kernel(
+    const unsigned int* inputBitmap,
+    unsigned int* contourBitmap,
+    const int width,
+    const int height,
+    const int chunkDim,
+    OperationType opType);
+
+/**
+ * @brief GPU kernel for parallel contour tracing using Suzuki-Abe algorithm
+ * Each block processes one pixel value group (one contour component)
+ */
+__global__ void traceContoursParallel_kernel(
+    const unsigned int* contourBitmap,
+    const unsigned int* overlayBitmap,
+    const unsigned int* sortedIndices,
+    const unsigned int* sortedValues,
+    const GroupInfo* groups,
+    const unsigned int numGroups,
+    unsigned char* visited,
+    ContourPoint* outputContours,
+    unsigned int* outputCounts,
+    ContourPolygonIDs* outputPolygonIDs,
+    const unsigned int width,
+    const unsigned int height,
+    const unsigned int maxPointsPerContour);
 
 } // namespace GpuLithoLib

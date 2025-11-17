@@ -89,5 +89,36 @@ bool computeLineIntersection(
     const cv::Point2f& p3, const cv::Point2f& p4,
     cv::Point2f& intersection, double& angle_degrees);
 
+// ============================================================================
+// GPU Kernel Declaration
+// ============================================================================
+
+/**
+ * @brief GPU kernel to compute intersection points for polygon pairs
+ * Each block handles one intersecting pair
+ * Assumes: 1) polygons have <= 1024 vertices, 2) max 32 intersection points per pair
+ *
+ * @param packedPairs Array of packed pair IDs (device)
+ * @param numPairs Number of intersecting pairs
+ * @param subjectVertices Subject layer vertices (device)
+ * @param subjectStartIndices Subject layer start indices (device)
+ * @param subjectPtCounts Subject layer vertex counts (device)
+ * @param clipperVertices Clipper layer vertices (device)
+ * @param clipperStartIndices Clipper layer start indices (device)
+ * @param clipperPtCounts Clipper layer vertex counts (device)
+ * @param outputPoints 2D array [numPairs][32] for intersection points (device)
+ * @param outputCounts Array [numPairs] for actual count per pair (device)
+ */
+__global__ void computeIntersectionPoints_kernel(
+    const unsigned int* packedPairs,
+    const unsigned int numPairs,
+    const uint2* subjectVertices,
+    const unsigned int* subjectStartIndices,
+    const unsigned int* subjectPtCounts,
+    const uint2* clipperVertices,
+    const unsigned int* clipperStartIndices,
+    const unsigned int* clipperPtCounts,
+    IntersectionPointData* outputPoints,
+    unsigned int* outputCounts);
 
 } // namespace GpuLithoLib
