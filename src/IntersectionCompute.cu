@@ -26,15 +26,15 @@ IntersectionComputeEngine::~IntersectionComputeEngine() {
 
 void IntersectionComputeEngine::freeData() {
     if (d_packed_pairs) {
-        gpuFree(d_packed_pairs);
+        CHECK_GPU_ERROR(gpuFree(d_packed_pairs));
         d_packed_pairs = nullptr;
     }
     if (d_intersection_points) {
-        gpuFree(d_intersection_points);
+        CHECK_GPU_ERROR(gpuFree(d_intersection_points));
         d_intersection_points = nullptr;
     }
     if (d_intersection_counts) {
-        gpuFree(d_intersection_counts);
+        CHECK_GPU_ERROR(gpuFree(d_intersection_counts));
         d_intersection_counts = nullptr;
     }
     numIntersectingPairs = 0;
@@ -184,7 +184,7 @@ IntersectionComputeEngine::computeAllIntersectionPoints(
                                unique_size * sizeof(unsigned int), gpuMemcpyDeviceToDevice));
 
     // Free temporary buffer
-    gpuFree(d_temp_packed_pairs);
+    CHECK_GPU_ERROR(gpuFree(d_temp_packed_pairs));
 
     // Step 1d: Copy unique pairs back to host (minimal transfer - only unique pairs)
     std::vector<unsigned int> h_packed_pairs(unique_size);
