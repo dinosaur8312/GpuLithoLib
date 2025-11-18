@@ -19,7 +19,14 @@
 #include <thrust/transform.h>
 #include <thrust/iterator/zip_iterator.h>
 #include <thrust/tuple.h>
+
+// Platform-specific CUB include
+#ifdef __HIP_PLATFORM_AMD__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#else
 #include <cub/device/device_run_length_encode.cuh>
+#endif
 
 namespace GpuLithoLib {
 
