@@ -56,20 +56,16 @@ struct ContourPoint {
     __host__ __device__ ContourPoint(unsigned int px, unsigned int py) : x(px), y(py) {}
 };
 
-// Structure to hold group boundaries in sorted pixel array
-struct GroupInfo {
-    unsigned int value;        // Pixel value for this group
-    unsigned int startIdx;     // Starting index in sorted arrays
-    unsigned int count;        // Number of pixels in this group
-};
+// Note: Group data uses separate pointer representation for clarity:
+// - d_group_pixel_values: Pixel value for each group
+// - d_group_start_indices: Starting index in sorted arrays for each group
+// - d_group_counts: Number of pixels in each group
 
-// Structure to hold collected polygon IDs for a contour
-struct ContourPolygonIDs {
-    unsigned int subject_ids[256];    // Buffer for unique subject IDs
-    unsigned int clipper_ids[256];    // Buffer for unique clipper IDs
-    unsigned int subject_count;        // Number of unique subject IDs
-    unsigned int clipper_count;        // Number of unique clipper IDs
-};
+// Note: Polygon ID data uses separate pointer representation for clarity:
+// - d_subject_ids: Buffer for unique subject IDs [numGroups * 256]
+// - d_clipper_ids: Buffer for unique clipper IDs [numGroups * 256]
+// - d_subject_counts: Number of unique subject IDs per group [numGroups]
+// - d_clipper_counts: Number of unique clipper IDs per group [numGroups]
 
 // ContourDetectEngine: Manages contour detection and simplification
 class ContourDetectEngine {
@@ -169,12 +165,17 @@ __global__ void traceContoursParallel_kernel(
     const unsigned int* overlayBitmap,
     const unsigned int* sortedIndices,
     const unsigned int* sortedValues,
-    const GroupInfo* groups,
+    const unsigned int* groupPixelValues,
+    const unsigned int* groupStartIndices,
+    const unsigned int* groupCounts,
     const unsigned int numGroups,
     unsigned char* visited,
     ContourPoint* outputContours,
     unsigned int* outputCounts,
-    ContourPolygonIDs* outputPolygonIDs,
+    unsigned int* outputSubjectIDs,
+    unsigned int* outputClipperIDs,
+    unsigned int* outputSubjectCounts,
+    unsigned int* outputClipperCounts,
     const unsigned int width,
     const unsigned int height,
     const unsigned int maxPointsPerContour);

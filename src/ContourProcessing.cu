@@ -589,48 +589,30 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
     d_unique_values.resize(numGroups);
     d_group_counts.resize(numGroups);
 
-    // Step 2: Build GroupInfo structures on GPU
-    // Compute start indices using exclusive scan of group counts
+    // Step 2: Compute start indices using exclusive scan of group counts
+    // Using separate pointer representation instead of GroupInfo struct
     thrust::device_vector<unsigned int> d_group_starts(numGroups);
     thrust::exclusive_scan(d_group_counts.begin(), d_group_counts.end(), d_group_starts.begin());
 
-    // Build GroupInfo array on GPU using simple kernel
-    thrust::device_vector<GroupInfo> d_groups(numGroups);
-
-    // Launch simple kernel to pack (value, startIdx, count) into GroupInfo
-    auto pack_groups = [] __device__ (unsigned int value, unsigned int startIdx, unsigned int count) {
-        GroupInfo g;
-        g.value = value;
-        g.startIdx = startIdx;
-        g.count = count;
-        return g;
-    };
-
-    thrust::transform(
-        thrust::make_zip_iterator(thrust::make_tuple(
-            d_unique_values.begin(),
-            d_group_starts.begin(),
-            d_group_counts.begin()
-        )),
-        thrust::make_zip_iterator(thrust::make_tuple(
-            d_unique_values.end(),
-            d_group_starts.end(),
-            d_group_counts.end()
-        )),
-        d_groups.begin(),
-        [=] __device__ (const thrust::tuple<unsigned int, unsigned int, unsigned int>& t) {
-            return pack_groups(thrust::get<0>(t), thrust::get<1>(t), thrust::get<2>(t));
-        }
-    );
+    // Now we have three separate arrays for group data:
+    // - d_unique_values: pixel values for each group
+    // - d_group_starts: starting index in sorted arrays for each group
+    // - d_group_counts: number of pixels in each group
 
     // Step 3: Allocate visited array (one flag per sorted pixel)
     thrust::device_vector<unsigned char> d_visited(sortedPixels.count, 0);
 
     // Step 4: Allocate output arrays
     const unsigned int maxPointsPerContour = 1<<13; // 8192 points max per contour
+    const unsigned int maxIDsPerGroup = 256;
     thrust::device_vector<ContourPoint> d_outputContours(numGroups * maxPointsPerContour);
     thrust::device_vector<unsigned int> d_outputCounts(numGroups, 0);
-    thrust::device_vector<ContourPolygonIDs> d_outputPolygonIDs(numGroups);
+
+    // Allocate separate arrays for polygon IDs (instead of ContourPolygonIDs struct)
+    thrust::device_vector<unsigned int> d_subject_ids(numGroups * maxIDsPerGroup);
+    thrust::device_vector<unsigned int> d_clipper_ids(numGroups * maxIDsPerGroup);
+    thrust::device_vector<unsigned int> d_subject_counts(numGroups, 0);
+    thrust::device_vector<unsigned int> d_clipper_counts(numGroups, 0);
 
     // Step 5: Launch tracing kernel (one block per group)
     dim3 blockSize(1, 1, 1); // Using single thread per block for now
@@ -641,12 +623,17 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
         overlayBitmap,
         thrust::raw_pointer_cast(sortedPixels.indices.data()),
         thrust::raw_pointer_cast(sortedPixels.values.data()),
-        thrust::raw_pointer_cast(d_groups.data()),
+        thrust::raw_pointer_cast(d_unique_values.data()),
+        thrust::raw_pointer_cast(d_group_starts.data()),
+        thrust::raw_pointer_cast(d_group_counts.data()),
         numGroups,
         thrust::raw_pointer_cast(d_visited.data()),
         thrust::raw_pointer_cast(d_outputContours.data()),
         thrust::raw_pointer_cast(d_outputCounts.data()),
-        thrust::raw_pointer_cast(d_outputPolygonIDs.data()),
+        thrust::raw_pointer_cast(d_subject_ids.data()),
+        thrust::raw_pointer_cast(d_clipper_ids.data()),
+        thrust::raw_pointer_cast(d_subject_counts.data()),
+        thrust::raw_pointer_cast(d_clipper_counts.data()),
         width,
         height,
         maxPointsPerContour);
@@ -657,36 +644,83 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
     // Step 6: Copy results back to host
     thrust::host_vector<ContourPoint> h_outputContours = d_outputContours;
     thrust::host_vector<unsigned int> h_outputCounts = d_outputCounts;
-    thrust::host_vector<ContourPolygonIDs> h_outputPolygonIDs = d_outputPolygonIDs;
+    thrust::host_vector<unsigned int> h_subject_ids = d_subject_ids;
+    thrust::host_vector<unsigned int> h_clipper_ids = d_clipper_ids;
+    thrust::host_vector<unsigned int> h_subject_counts = d_subject_counts;
+    thrust::host_vector<unsigned int> h_clipper_counts = d_clipper_counts;
 
     // Step 7: Convert to cv::Point format and print polygon IDs
+    // Parse contours with delimiter markers (x=0xFFFFFFFF, y=pixel_count)
     for (unsigned int g = 0; g < numGroups; ++g) {
-        unsigned int count = h_outputCounts[g];
-        if (count > 0) {
-            std::vector<cv::Point> contour;
-            contour.reserve(count);
+        unsigned int totalCount = h_outputCounts[g];
+        if (totalCount > 0) {
+            unsigned int baseIdx = g * maxPointsPerContour;
+            unsigned int i = 0;
+            unsigned int contourInGroup = 0;
 
-            for (unsigned int i = 0; i < count; ++i) {
-                ContourPoint pt = h_outputContours[g * maxPointsPerContour + i];
-                contour.push_back(cv::Point(pt.x, pt.y));
-            }
+            while (i < totalCount) {
+                // Determine contour length
+                unsigned int contourLen = 0;
+                unsigned int startIdx = i;
 
-            contours.push_back(std::move(contour));
+                if (contourInGroup == 0) {
+                    // First contour: find length by scanning until marker or end
+                    while (i < totalCount) {
+                        ContourPoint pt = h_outputContours[baseIdx + i];
+                        if (pt.x == 0xFFFFFFFF) {
+                            // Found marker for next contour
+                            break;
+                        }
+                        i++;
+                    }
+                    contourLen = i - startIdx;
+                } else {
+                    // Subsequent contours: current position should be at marker
+                    ContourPoint marker = h_outputContours[baseIdx + i];
+                    if (marker.x == 0xFFFFFFFF) {
+                        contourLen = marker.y;
+                        i++; // Skip marker
+                        startIdx = i;
+                        i += contourLen; // Move past contour points
+                    } else {
+                        // Unexpected: not a marker, skip
+                        i++;
+                        continue;
+                    }
+                }
 
-            // Print collected polygon IDs for this contour group
-            const ContourPolygonIDs& ids = h_outputPolygonIDs[g];
-            std::cout << "  Group " << g << " (" << count << " points): ";
-            std::cout << "Subject IDs [" << ids.subject_count << "]: ";
-            for (unsigned int i = 0; i < ids.subject_count; ++i) {
-                std::cout << ids.subject_ids[i];
-                if (i < ids.subject_count - 1) std::cout << ", ";
+                // Extract contour points
+                if (contourLen > 0) {
+                    std::vector<cv::Point> contour;
+                    contour.reserve(contourLen);
+
+                    for (unsigned int j = 0; j < contourLen; ++j) {
+                        ContourPoint pt = h_outputContours[baseIdx + startIdx + j];
+                        contour.push_back(cv::Point(pt.x, pt.y));
+                    }
+
+                    contours.push_back(std::move(contour));
+
+                    // Print collected polygon IDs for this contour
+                    unsigned int subjectCount = h_subject_counts[g];
+                    unsigned int clipperCount = h_clipper_counts[g];
+                    std::cout << "  Group " << g << " Contour " << contourInGroup
+                              << " (" << contourLen << " points): ";
+                    std::cout << "Subject IDs [" << subjectCount << "]: ";
+                    for (unsigned int k = 0; k < subjectCount; ++k) {
+                        std::cout << h_subject_ids[g * maxIDsPerGroup + k];
+                        if (k < subjectCount - 1) std::cout << ", ";
+                    }
+                    std::cout << " | Clipper IDs [" << clipperCount << "]: ";
+                    for (unsigned int k = 0; k < clipperCount; ++k) {
+                        std::cout << h_clipper_ids[g * maxIDsPerGroup + k];
+                        if (k < clipperCount - 1) std::cout << ", ";
+                    }
+                    std::cout << std::endl;
+                }
+
+                contourInGroup++;
             }
-            std::cout << " | Clipper IDs [" << ids.clipper_count << "]: ";
-            for (unsigned int i = 0; i < ids.clipper_count; ++i) {
-                std::cout << ids.clipper_ids[i];
-                if (i < ids.clipper_count - 1) std::cout << ", ";
-            }
-            std::cout << std::endl;
         }
     }
 
@@ -904,7 +938,10 @@ __device__ void traceOneContour(
     unsigned char* visited,
     ContourPoint* outputContour,
     unsigned int* outputCount,
-    ContourPolygonIDs* polygonIDs,
+    unsigned int* subjectIDs,
+    unsigned int* clipperIDs,
+    unsigned int* subjectCount,
+    unsigned int* clipperCount,
     unsigned int width,
     unsigned int height,
     unsigned int maxPoints,
@@ -919,9 +956,9 @@ __device__ void traceOneContour(
     // Debug output for first block only
     bool debug = (groupIdx == 0);
 
-    // Initialize polygon ID collection
-    polygonIDs->subject_count = 0;
-    polygonIDs->clipper_count = 0;
+    // Initialize polygon ID counts
+    *subjectCount = 0;
+    *clipperCount = 0;
 
     // Direction vectors for 8-connectivity (E, SE, S, SW, W, NW, N, NE)
     // Clockwise order starting from right (East)
@@ -953,8 +990,8 @@ __device__ void traceOneContour(
     unsigned int overlayValue = getBitmapPixel(overlayBitmap, currentX, currentY, width, height);
     unsigned int subject_id = overlayValue & 0xFFFF;        // Lower 16 bits
     unsigned int clipper_id = (overlayValue >> 16) & 0xFFFF; // Upper 16 bits
-    addPolygonID(polygonIDs->subject_ids, &polygonIDs->subject_count, subject_id, 256);
-    addPolygonID(polygonIDs->clipper_ids, &polygonIDs->clipper_count, clipper_id, 256);
+    addPolygonID(subjectIDs, subjectCount, subject_id, 256);
+    addPolygonID(clipperIDs, clipperCount, clipper_id, 256);
 
     // Mark as visited
     visited[startSortedIdx] = 1;
@@ -1014,8 +1051,8 @@ __device__ void traceOneContour(
                 unsigned int overlayValue = getBitmapPixel(overlayBitmap, currentX, currentY, width, height);
                 unsigned int subject_id = overlayValue & 0xFFFF;        // Lower 16 bits
                 unsigned int clipper_id = (overlayValue >> 16) & 0xFFFF; // Upper 16 bits
-                addPolygonID(polygonIDs->subject_ids, &polygonIDs->subject_count, subject_id, 256);
-                addPolygonID(polygonIDs->clipper_ids, &polygonIDs->clipper_count, clipper_id, 256);
+                addPolygonID(subjectIDs, subjectCount, subject_id, 256);
+                addPolygonID(clipperIDs, clipperCount, clipper_id, 256);
 
                 // Mark as visited
                 unsigned int currentIdx = currentY * width + currentX;
@@ -1037,7 +1074,7 @@ __device__ void traceOneContour(
             }
             break;
         }
-    }
+    }// while (iterCount < maxIter)
 
     *outputCount = pointCount;
     if (debug && pointCount > 0) {
@@ -1052,12 +1089,17 @@ __global__ void traceContoursParallel_kernel(
     const unsigned int* overlayBitmap,
     const unsigned int* sortedIndices,
     const unsigned int* sortedValues,
-    const GroupInfo* groups,
+    const unsigned int* groupPixelValues,
+    const unsigned int* groupStartIndices,
+    const unsigned int* groupCounts,
     const unsigned int numGroups,
     unsigned char* visited,
     ContourPoint* outputContours,
     unsigned int* outputCounts,
-    ContourPolygonIDs* outputPolygonIDs,
+    unsigned int* outputSubjectIDs,
+    unsigned int* outputClipperIDs,
+    unsigned int* outputSubjectCounts,
+    unsigned int* outputClipperCounts,
     const unsigned int width,
     const unsigned int height,
     const unsigned int maxPointsPerContour)
@@ -1068,19 +1110,22 @@ __global__ void traceContoursParallel_kernel(
         return;
     }
 
-    // Get group info
-    GroupInfo group = groups[groupIdx];
-    unsigned int targetValue = group.value;
-    unsigned int groupStart = group.startIdx;
-    unsigned int groupCount = group.count;
+    // Get group info from separate arrays
+    unsigned int targetValue = groupPixelValues[groupIdx];
+    unsigned int groupStart = groupStartIndices[groupIdx];
+    unsigned int groupCount = groupCounts[groupIdx];
 
     // Each thread in the block tries to find an unvisited pixel to start tracing
     // This handles multiple disjoint contours within the same group
     unsigned int contourCount = 0;
     const unsigned int maxContoursPerGroup = 32; // Safety limit
+    const unsigned int maxIDsPerGroup = 256;
 
     // Allocate shared memory for polygon ID collection
-    __shared__ ContourPolygonIDs sharedPolygonIDs;
+    __shared__ unsigned int sharedSubjectIDs[256];
+    __shared__ unsigned int sharedClipperIDs[256];
+    __shared__ unsigned int sharedSubjectCount;
+    __shared__ unsigned int sharedClipperCount;
 
     // Only thread 0 does the tracing (serial within block for now)
     if (threadIdx.x == 0) {
@@ -1093,6 +1138,22 @@ __global__ void traceContoursParallel_kernel(
                 // Start a new contour from this pixel
                 unsigned int localCount = 0;
                 ContourPoint* contourOutput = outputContours + groupIdx * maxPointsPerContour;
+                unsigned int currentOffset = outputCounts[groupIdx];
+
+                // For second and subsequent contours, add a delimiter marker first
+                // Marker format: x = 0xFFFFFFFF, y = will be filled with pixel count after tracing
+                unsigned int markerIdx = 0;
+                if (contourCount > 0) {
+                    // Check if we have space for marker
+                    if (currentOffset >= maxPointsPerContour - 1) {
+                        break; // No space left
+                    }
+                    markerIdx = currentOffset;
+                    contourOutput[currentOffset].x = 0xFFFFFFFF;
+                    contourOutput[currentOffset].y = 0; // Will be updated after tracing
+                    currentOffset++;
+                    outputCounts[groupIdx]++;
+                }
 
                 traceOneContour(
                     contourBitmap,
@@ -1103,19 +1164,33 @@ __global__ void traceContoursParallel_kernel(
                     groupStart,
                     groupCount,
                     visited,
-                    contourOutput + outputCounts[groupIdx], // Append to existing
+                    contourOutput + currentOffset,
                     &localCount,
-                    &sharedPolygonIDs,
+                    sharedSubjectIDs,
+                    sharedClipperIDs,
+                    &sharedSubjectCount,
+                    &sharedClipperCount,
                     width,
                     height,
-                    maxPointsPerContour - outputCounts[groupIdx],
+                    maxPointsPerContour - currentOffset,
                     groupIdx,
                     contourCount);
 
                 // Store the collected polygon IDs for this group
                 // For now, each group gets one set of IDs (could be refined later)
                 if (contourCount == 0) {
-                    outputPolygonIDs[groupIdx] = sharedPolygonIDs;
+                    // First contour: copy shared memory IDs to global memory
+                    for (unsigned int j = 0; j < sharedSubjectCount && j < maxIDsPerGroup; ++j) {
+                        outputSubjectIDs[groupIdx * maxIDsPerGroup + j] = sharedSubjectIDs[j];
+                    }
+                    for (unsigned int j = 0; j < sharedClipperCount && j < maxIDsPerGroup; ++j) {
+                        outputClipperIDs[groupIdx * maxIDsPerGroup + j] = sharedClipperIDs[j];
+                    }
+                    outputSubjectCounts[groupIdx] = sharedSubjectCount;
+                    outputClipperCounts[groupIdx] = sharedClipperCount;
+                } else {
+                    // For subsequent contours, update the marker's y value with pixel count
+                    contourOutput[markerIdx].y = localCount;
                 }
 
                 outputCounts[groupIdx] += localCount;
