@@ -505,9 +505,8 @@ SortedContourPixels ContourDetectEngine::sortContourPixelsByValue(
         thrust::placeholders::_1 == 0);
 
     // Calculate the number of non-zero pixels
-    unsigned int nonZeroCount = thrust::distance(
-        thrust::make_zip_iterator(thrust::make_tuple(d_values.begin(), d_indices.begin())),
-        new_end);
+    auto values_new_end = new_end.get_iterator_tuple().template get<0>();
+    unsigned int nonZeroCount = thrust::distance(d_values.begin(), values_new_end);
 
     // Resize vectors to actual size
     d_values.resize(nonZeroCount);
@@ -543,39 +542,86 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
         return contours;
     }
 
-    // Step 1: Identify groups (consecutive pixels with same value)
-    std::vector<GroupInfo> h_groups;
-    thrust::host_vector<unsigned int> h_values = sortedPixels.values;
+    // Step 1: Identify groups (consecutive pixels with same value) using CUB Run-Length Encode
+    // OPTIMIZATION: Use CUB DeviceRunLengthEncode instead of Thrust reduce_by_key
+    // This is simpler, more efficient, and purpose-built for exactly this use case
+    thrust::device_vector<unsigned int> d_unique_values(sortedPixels.count);
+    thrust::device_vector<unsigned int> d_group_counts(sortedPixels.count);
+    thrust::device_vector<unsigned int> d_num_runs(1);
 
-    unsigned int currentValue = h_values[0];
-    unsigned int groupStart = 0;
+    // Determine temporary storage requirements
+    void* d_temp_storage = nullptr;
+    size_t temp_storage_bytes = 0;
+    cub::DeviceRunLengthEncode::Encode(
+        d_temp_storage, temp_storage_bytes,
+        thrust::raw_pointer_cast(sortedPixels.values.data()),
+        thrust::raw_pointer_cast(d_unique_values.data()),
+        thrust::raw_pointer_cast(d_group_counts.data()),
+        thrust::raw_pointer_cast(d_num_runs.data()),
+        sortedPixels.count);
 
-    for (unsigned int i = 1; i <= sortedPixels.count; ++i) {
-        bool isNewGroup = (i == sortedPixels.count) || (h_values[i] != currentValue);
+    // Allocate temporary storage
+    CHECK_GPU_ERROR(gpuMalloc(&d_temp_storage, temp_storage_bytes));
 
-        if (isNewGroup) {
-            GroupInfo group;
-            group.value = currentValue;
-            group.startIdx = groupStart;
-            group.count = i - groupStart;
-            h_groups.push_back(group);
+    // Run encoding: [1,1,1,2,2,3] -> unique=[1,2,3], counts=[3,2,1], num_runs=3
+    cub::DeviceRunLengthEncode::Encode(
+        d_temp_storage, temp_storage_bytes,
+        thrust::raw_pointer_cast(sortedPixels.values.data()),
+        thrust::raw_pointer_cast(d_unique_values.data()),
+        thrust::raw_pointer_cast(d_group_counts.data()),
+        thrust::raw_pointer_cast(d_num_runs.data()),
+        sortedPixels.count);
 
-            if (i < sortedPixels.count) {
-                currentValue = h_values[i];
-                groupStart = i;
-            }
-        }
-    }
+    // Get number of groups (copy single int from device)
+    unsigned int numGroups;
+    CHECK_GPU_ERROR(gpuMemcpy(&numGroups, thrust::raw_pointer_cast(d_num_runs.data()),
+                              sizeof(unsigned int), gpuMemcpyDeviceToHost));
 
-    unsigned int numGroups = h_groups.size();
+    CHECK_GPU_ERROR(gpuFree(d_temp_storage));
+
     std::cout << "Found " << numGroups << " pixel value groups for tracing" << std::endl;
 
     if (numGroups == 0) {
         return contours;
     }
 
-    // Step 2: Allocate GPU memory for groups
-    thrust::device_vector<GroupInfo> d_groups(h_groups);
+    // Resize to actual number of groups
+    d_unique_values.resize(numGroups);
+    d_group_counts.resize(numGroups);
+
+    // Step 2: Build GroupInfo structures on GPU
+    // Compute start indices using exclusive scan of group counts
+    thrust::device_vector<unsigned int> d_group_starts(numGroups);
+    thrust::exclusive_scan(d_group_counts.begin(), d_group_counts.end(), d_group_starts.begin());
+
+    // Build GroupInfo array on GPU using simple kernel
+    thrust::device_vector<GroupInfo> d_groups(numGroups);
+
+    // Launch simple kernel to pack (value, startIdx, count) into GroupInfo
+    auto pack_groups = [] __device__ (unsigned int value, unsigned int startIdx, unsigned int count) {
+        GroupInfo g;
+        g.value = value;
+        g.startIdx = startIdx;
+        g.count = count;
+        return g;
+    };
+
+    thrust::transform(
+        thrust::make_zip_iterator(thrust::make_tuple(
+            d_unique_values.begin(),
+            d_group_starts.begin(),
+            d_group_counts.begin()
+        )),
+        thrust::make_zip_iterator(thrust::make_tuple(
+            d_unique_values.end(),
+            d_group_starts.end(),
+            d_group_counts.end()
+        )),
+        d_groups.begin(),
+        [=] __device__ (const thrust::tuple<unsigned int, unsigned int, unsigned int>& t) {
+            return pack_groups(thrust::get<0>(t), thrust::get<1>(t), thrust::get<2>(t));
+        }
+    );
 
     // Step 3: Allocate visited array (one flag per sorted pixel)
     thrust::device_vector<unsigned char> d_visited(sortedPixels.count, 0);
@@ -586,7 +632,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
     thrust::device_vector<unsigned int> d_outputCounts(numGroups, 0);
     thrust::device_vector<ContourPolygonIDs> d_outputPolygonIDs(numGroups);
 
-    // Step 5: Launch kernel (one block per group)
+    // Step 5: Launch tracing kernel (one block per group)
     dim3 blockSize(1, 1, 1); // Using single thread per block for now
     dim3 gridSize(numGroups, 1, 1);
 

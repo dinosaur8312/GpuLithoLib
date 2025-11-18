@@ -15,6 +15,11 @@
 #include <thrust/copy.h>
 #include <thrust/unique.h>
 #include <thrust/distance.h>
+#include <thrust/scan.h>
+#include <thrust/transform.h>
+#include <thrust/iterator/zip_iterator.h>
+#include <thrust/tuple.h>
+#include <cub/device/device_run_length_encode.cuh>
 
 namespace GpuLithoLib {
 

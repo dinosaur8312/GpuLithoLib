@@ -15,12 +15,44 @@ A high-performance GPU-accelerated library for computational lithography operati
 
 ### 1. Build the Library
 
+The library supports both **CUDA** (NVIDIA GPUs) and **HIP** (AMD GPUs).
+
+#### For CUDA (NVIDIA GPUs):
 ```bash
 cd GpuLithoLib
 mkdir build && cd build
-cmake ..
+cmake -DGPU_BACKEND=CUDA ..
 make -j$(nproc)
 ```
+
+**Requirements:**
+- CUDA Toolkit 11.0+ (tested with 12.2)
+- Compute capabilities: 52, 60, 61, 70, 75, 80, 86, 89, 90
+- OpenCV 4.0+
+- CMake 3.18+
+
+#### For HIP (AMD GPUs):
+```bash
+cd GpuLithoLib
+mkdir build && cd build
+cmake -DGPU_BACKEND=HIP ..
+make -j$(nproc)
+```
+
+**Requirements:**
+- ROCm 5.0+ with HIP runtime
+- Architectures: gfx900, gfx906, gfx908, gfx90a, gfx1030, gfx1100
+- OpenCV 4.0+
+- CMake 3.18+
+
+#### Auto-Detection:
+```bash
+cd GpuLithoLib
+mkdir build && cd build
+cmake ..  # Auto-detects CUDA or HIP
+make -j$(nproc)
+```
+The build system will automatically detect `nvcc` (CUDA) or `hipcc` (HIP) and configure accordingly.
 
 ### 2. Basic Usage
 
@@ -59,11 +91,15 @@ engine.visualizeLayer(intersection, "result.png");
 engine.dumpLayerToFile(intersection, "result.txt", 0);
 ```
 
-### 3. Run Example
+### 3. Run Examples
 
 ```bash
-./example_usage
+# From build/ directory
+./example_usage           # Comprehensive demo of all features
+./test_intersection       # Focused intersection operation test
 ```
+
+Both examples generate PNG visualizations and demonstrate the library's capabilities.
 
 ## API Reference
 
@@ -172,11 +208,24 @@ engine.enableProfiling(true);
 engine.printPerformanceStats();
 ```
 
-## Dependencies
+## Platform Support
 
-- CUDA Toolkit (11.0+)
-- OpenCV (4.0+)
-- CMake (3.18+)
+### CUDA (NVIDIA GPUs)
+- **CUDA Toolkit**: 11.0+ (tested with 12.2)
+- **Compute Capabilities**: 52, 60, 61, 70, 75, 80, 86, 89, 90
+- **OpenCV**: 4.0+
+- **CMake**: 3.18+
+- **Build**: `cmake -DGPU_BACKEND=CUDA ..`
+
+### HIP (AMD GPUs)
+- **ROCm**: 5.0+ with HIP runtime
+- **Architectures**: gfx900, gfx906, gfx908, gfx90a, gfx1030, gfx1100
+- **OpenCV**: 4.0+
+- **CMake**: 3.18+
+- **Build**: `cmake -DGPU_BACKEND=HIP ..`
+
+### Auto-Detection
+The build system automatically detects available GPU platform (CUDA → HIP priority).
 
 ## Examples
 
