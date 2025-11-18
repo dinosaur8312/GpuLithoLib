@@ -26,6 +26,13 @@ namespace GpuLithoLib {
 // Forward declarations
 class LayerImpl;
 
+// GPU Kernel Profiling Functions
+void addRayCastingTime(float ms);
+void addOverlayTime(float ms);
+void addIntersectionComputeTime(float ms);
+void printGpuKernelTimingSummary();
+void resetGpuKernelTimers();
+
 using gpuLitho::OperationType;
 
 // Structure for candidate points in contour simplification

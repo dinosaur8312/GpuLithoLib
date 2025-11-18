@@ -1,4 +1,5 @@
 #include "IntersectionCompute.cuh"
+#include "ContourProcessing.cuh"
 #include "LayerImpl.h"
 #include "GpuOperations.cuh"
 #include "../include/GpuLithoLib.h"
@@ -206,6 +207,12 @@ IntersectionComputeEngine::computeAllIntersectionPoints(
         dim3 blockSize(256);  // 256 threads per block
         dim3 gridSize(numPairs);
 
+        // Time the intersection computation kernel
+        gpuEvent_t intStart, intStop;
+        gpuEventCreate(&intStart);
+        gpuEventCreate(&intStop);
+        gpuEventRecord(intStart);
+
         computeIntersectionPoints_kernel<<<gridSize, blockSize>>>(
             d_packed_pairs,
             numPairs,
@@ -219,7 +226,15 @@ IntersectionComputeEngine::computeAllIntersectionPoints(
             d_intersection_counts);
 
         CHECK_GPU_ERROR(gpuGetLastError());
-        CHECK_GPU_ERROR(gpuDeviceSynchronize());
+        gpuEventRecord(intStop);
+        gpuEventSynchronize(intStop);
+
+        float intMs = 0.0f;
+        gpuEventElapsedTime(&intMs, intStart, intStop);
+        addIntersectionComputeTime(intMs);
+
+        gpuEventDestroy(intStart);
+        gpuEventDestroy(intStop);
 
         // Copy results back to host for constructing the map
         std::vector<IntersectionPointData> h_intersection_points(numPairs * MAX_INTERSECTIONS_PER_PAIR);

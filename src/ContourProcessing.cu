@@ -9,6 +9,46 @@
 namespace GpuLithoLib {
 
 // ============================================================================
+// GPU Kernel Profiling Timers
+// ============================================================================
+static float g_extractContours_time_ms = 0.0f;
+static float g_traceContours_time_ms = 0.0f;
+static float g_rayCasting_time_ms = 0.0f;
+static float g_overlay_time_ms = 0.0f;
+static float g_intersectionCompute_time_ms = 0.0f;
+
+// Functions to accumulate timing from other files
+void addRayCastingTime(float ms) { g_rayCasting_time_ms += ms; }
+void addOverlayTime(float ms) { g_overlay_time_ms += ms; }
+void addIntersectionComputeTime(float ms) { g_intersectionCompute_time_ms += ms; }
+
+// Function to print timing summary
+void printGpuKernelTimingSummary() {
+    std::cout << "\n============================================" << std::endl;
+    std::cout << "GPU Kernel Timing Summary" << std::endl;
+    std::cout << "============================================" << std::endl;
+    std::cout << "  Ray Casting:            " << g_rayCasting_time_ms << " ms" << std::endl;
+    std::cout << "  Overlay:                " << g_overlay_time_ms << " ms" << std::endl;
+    std::cout << "  Intersection Compute:   " << g_intersectionCompute_time_ms << " ms" << std::endl;
+    std::cout << "  Extract Contours:       " << g_extractContours_time_ms << " ms" << std::endl;
+    std::cout << "  Trace Contours:         " << g_traceContours_time_ms << " ms" << std::endl;
+    std::cout << "--------------------------------------------" << std::endl;
+    float total = g_rayCasting_time_ms + g_overlay_time_ms + g_intersectionCompute_time_ms +
+                  g_extractContours_time_ms + g_traceContours_time_ms;
+    std::cout << "  Total GPU Kernel Time:  " << total << " ms" << std::endl;
+    std::cout << "============================================\n" << std::endl;
+}
+
+// Function to reset timers
+void resetGpuKernelTimers() {
+    g_extractContours_time_ms = 0.0f;
+    g_traceContours_time_ms = 0.0f;
+    g_rayCasting_time_ms = 0.0f;
+    g_overlay_time_ms = 0.0f;
+    g_intersectionCompute_time_ms = 0.0f;
+}
+
+// ============================================================================
 // ContourDetectEngine Implementation
 // ============================================================================
 
@@ -45,6 +85,12 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
     dim3 blockSize(32, 32);
     dim3 gridSize(iDivUp(currentGridWidth, chunkDim), iDivUp(currentGridHeight, chunkDim));
 
+    // Time the extractContours kernel
+    gpuEvent_t extractStart, extractStop;
+    gpuEventCreate(&extractStart);
+    gpuEventCreate(&extractStop);
+    gpuEventRecord(extractStart);
+
     extractContours_kernel<<<gridSize, blockSize>>>(
         outputLayer->d_bitmap,
         contourLayer->d_bitmap,
@@ -54,7 +100,15 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
         opType);
 
     CHECK_GPU_ERROR(gpuGetLastError());
-    CHECK_GPU_ERROR(gpuDeviceSynchronize());
+    gpuEventRecord(extractStop);
+    gpuEventSynchronize(extractStop);
+
+    float extractMs = 0.0f;
+    gpuEventElapsedTime(&extractMs, extractStart, extractStop);
+    g_extractContours_time_ms += extractMs;
+
+    gpuEventDestroy(extractStart);
+    gpuEventDestroy(extractStop);
 
     // Copy to host
     contourLayer->copyBitmapToHost();
@@ -618,6 +672,12 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
     dim3 blockSize(1, 1, 1); // Using single thread per block for now
     dim3 gridSize(numGroups, 1, 1);
 
+    // Time the traceContoursParallel kernel
+    gpuEvent_t traceStart, traceStop;
+    gpuEventCreate(&traceStart);
+    gpuEventCreate(&traceStop);
+    gpuEventRecord(traceStart);
+
     traceContoursParallel_kernel<<<gridSize, blockSize>>>(
         contourBitmap,
         overlayBitmap,
@@ -639,7 +699,15 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
         maxPointsPerContour);
 
     CHECK_GPU_ERROR(gpuGetLastError());
-    CHECK_GPU_ERROR(gpuDeviceSynchronize());
+    gpuEventRecord(traceStop);
+    gpuEventSynchronize(traceStop);
+
+    float traceMs = 0.0f;
+    gpuEventElapsedTime(&traceMs, traceStart, traceStop);
+    g_traceContours_time_ms += traceMs;
+
+    gpuEventDestroy(traceStart);
+    gpuEventDestroy(traceStop);
 
     // Step 6: Copy results back to host
     thrust::host_vector<ContourPoint> h_outputContours = d_outputContours;

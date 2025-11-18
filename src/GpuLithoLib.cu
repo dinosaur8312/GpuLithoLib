@@ -266,19 +266,24 @@ public:
             gpuEventRecord(start);
         }
         
-        // Launch ray casting kernel
+        // Launch ray casting kernel with timing
+        gpuEvent_t rcStart, rcStop;
+        gpuEventCreate(&rcStart);
+        gpuEventCreate(&rcStop);
+        gpuEventRecord(rcStart);
+
         rayCasting_kernel<<<layer->polygonCount, 512>>>(
             layer->d_vertices,
-            layer->d_startIndices, 
+            layer->d_startIndices,
             layer->d_ptCounts,
             layer->d_boxes,
             layer->d_bitmap,
             currentGridWidth,
             currentGridHeight,
             layer->polygonCount);
-        
+
         CHECK_GPU_ERROR(gpuGetLastError());
-        
+
         // Optionally render edges
         if (edgeMode >= 0) {
             edgeRender_kernel<<<layer->polygonCount, 256>>>(
@@ -289,11 +294,19 @@ public:
                 currentGridWidth,
                 currentGridHeight,
                 edgeMode);
-            
+
             CHECK_GPU_ERROR(gpuGetLastError());
         }
-        
-        CHECK_GPU_ERROR(gpuDeviceSynchronize());
+
+        gpuEventRecord(rcStop);
+        gpuEventSynchronize(rcStop);
+
+        float rcMs = 0.0f;
+        gpuEventElapsedTime(&rcMs, rcStart, rcStop);
+        addRayCastingTime(rcMs);
+
+        gpuEventDestroy(rcStart);
+        gpuEventDestroy(rcStop);
         
         if (profilingEnabled) {
             gpuEventRecord(stop);
@@ -321,16 +334,30 @@ public:
         
         int blocksPerGrid = currentGridHeight;
         int threadsPerBlock = 512;
-        
+
+        // Time the overlay kernel
+        gpuEvent_t ovStart, ovStop;
+        gpuEventCreate(&ovStart);
+        gpuEventCreate(&ovStop);
+        gpuEventRecord(ovStart);
+
         overlay_kernel<<<blocksPerGrid, threadsPerBlock>>>(
             subject->d_bitmap,
             clipper->d_bitmap,
             output->d_bitmap,
             currentGridWidth,
             currentGridHeight);
-        
+
         CHECK_GPU_ERROR(gpuGetLastError());
-        CHECK_GPU_ERROR(gpuDeviceSynchronize());
+        gpuEventRecord(ovStop);
+        gpuEventSynchronize(ovStop);
+
+        float ovMs = 0.0f;
+        gpuEventElapsedTime(&ovMs, ovStart, ovStop);
+        addOverlayTime(ovMs);
+
+        gpuEventDestroy(ovStart);
+        gpuEventDestroy(ovStop);
         
         if (profilingEnabled) {
             gpuEventRecord(stop);
@@ -432,7 +459,10 @@ public:
             std::cerr << "Error: Layers not prepared for boolean operation" << std::endl;
             return Layer();
         }
-        
+
+        // Reset GPU kernel timers at the start of boolean operation
+        resetGpuKernelTimers();
+
         auto output = std::make_unique<LayerImpl>();
         
         // Step 1: Ray casting for both layers
@@ -506,7 +536,10 @@ public:
         
         // Step 7: Restore original coordinates
         restoreOriginalCoordinates(resultLayer.get());
-        
+
+        // Print GPU kernel timing summary
+        printGpuKernelTimingSummary();
+
         return Layer(std::move(resultLayer));
     }
     
