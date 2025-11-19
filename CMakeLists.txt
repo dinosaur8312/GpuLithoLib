@@ -63,6 +63,7 @@ set(LIBRARY_SOURCES
     src/ContourProcessing.cu
     src/GpuLithoLib.cu
     src/operation_types.cu
+    src/GpuKernelProfiler.cu
 )
 
 # Create static library based on backend

@@ -1,5 +1,5 @@
 #include "IntersectionCompute.cuh"
-#include "ContourProcessing.cuh"
+#include "GpuKernelProfiler.cuh"
 #include "LayerImpl.h"
 #include "GpuOperations.cuh"
 #include "../include/GpuLithoLib.h"
@@ -12,6 +12,9 @@
 #include <iostream>
 
 namespace GpuLithoLib {
+
+// External profiler instance (owned by GpuLithoEngine)
+extern GpuKernelProfiler* g_kernelProfiler;
 
 // ============================================================================
 // IntersectionComputeEngine Implementation
@@ -231,7 +234,7 @@ IntersectionComputeEngine::computeAllIntersectionPoints(
 
         float intMs = 0.0f;
         gpuEventElapsedTime(&intMs, intStart, intStop);
-        addIntersectionComputeTime(intMs);
+        if (g_kernelProfiler) g_kernelProfiler->addIntersectionComputeTime(intMs);
 
         gpuEventDestroy(intStart);
         gpuEventDestroy(intStop);

@@ -3,6 +3,7 @@
 #include "GpuOperations.cuh"
 #include "IntersectionCompute.cuh"
 #include "ContourProcessing.cuh"
+#include "GpuKernelProfiler.cuh"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <algorithm>
@@ -18,6 +19,9 @@
 #include <thrust/iterator/transform_iterator.h>
 
 namespace GpuLithoLib {
+
+// Global profiler pointer (set by GpuLithoEngine)
+GpuKernelProfiler* g_kernelProfiler = nullptr;
 
 //==============================================================================
 // Layer implementation
@@ -124,12 +128,25 @@ public:
     // Contour detection and simplification engine
     ContourDetectEngine contourEngine;
 
+    // GPU kernel profiler
+    GpuKernelProfiler kernelProfiler;
+
     EngineImpl(unsigned int maxW, unsigned int maxH)
         : maxGridWidth(maxW), maxGridHeight(maxH),
           currentGridWidth(0), currentGridHeight(0),
           isGlobalBoxSet(false), globalMinX(0), globalMinY(0), globalMaxX(0), globalMaxY(0),
           shiftX(0), shiftY(0), profilingEnabled(false),
-          totalRayCastingTime(0), totalOverlayTime(0), totalContourTime(0), operationCount(0) {}
+          totalRayCastingTime(0), totalOverlayTime(0), totalContourTime(0), operationCount(0) {
+        // Set global profiler pointer
+        g_kernelProfiler = &kernelProfiler;
+    }
+
+    ~EngineImpl() {
+        // Clear global profiler pointer
+        if (g_kernelProfiler == &kernelProfiler) {
+            g_kernelProfiler = nullptr;
+        }
+    }
     
     // Prepare engine for single layer operation
     void prepareSingleLayer(const Layer& layer) {
@@ -303,7 +320,7 @@ public:
 
         float rcMs = 0.0f;
         gpuEventElapsedTime(&rcMs, rcStart, rcStop);
-        addRayCastingTime(rcMs);
+        kernelProfiler.addRayCastingTime(rcMs);
 
         gpuEventDestroy(rcStart);
         gpuEventDestroy(rcStop);
@@ -354,7 +371,7 @@ public:
 
         float ovMs = 0.0f;
         gpuEventElapsedTime(&ovMs, ovStart, ovStop);
-        addOverlayTime(ovMs);
+        kernelProfiler.addOverlayTime(ovMs);
 
         gpuEventDestroy(ovStart);
         gpuEventDestroy(ovStop);
@@ -461,7 +478,7 @@ public:
         }
 
         // Reset GPU kernel timers at the start of boolean operation
-        resetGpuKernelTimers();
+        kernelProfiler.reset();
 
         auto output = std::make_unique<LayerImpl>();
         
@@ -538,7 +555,7 @@ public:
         restoreOriginalCoordinates(resultLayer.get());
 
         // Print GPU kernel timing summary
-        printGpuKernelTimingSummary();
+        kernelProfiler.printSummary();
 
         return Layer(std::move(resultLayer));
     }

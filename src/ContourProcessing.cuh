@@ -33,13 +33,6 @@ namespace GpuLithoLib {
 // Forward declarations
 class LayerImpl;
 
-// GPU Kernel Profiling Functions
-void addRayCastingTime(float ms);
-void addOverlayTime(float ms);
-void addIntersectionComputeTime(float ms);
-void printGpuKernelTimingSummary();
-void resetGpuKernelTimers();
-
 using gpuLitho::OperationType;
 
 // Structure for candidate points in contour simplification
@@ -61,14 +54,7 @@ struct SortedContourPixels {
     SortedContourPixels() : count(0) {}
 };
 
-// Structure to hold a single contour point during tracing
-struct ContourPoint {
-    unsigned int x;
-    unsigned int y;
-
-    __host__ __device__ ContourPoint() : x(0), y(0) {}
-    __host__ __device__ ContourPoint(unsigned int px, unsigned int py) : x(px), y(py) {}
-};
+// Note: Use uint2 for contour points (x, y coordinates)
 
 // Note: Group data uses separate pointer representation for clarity:
 // - d_group_pixel_values: Pixel value for each group
@@ -184,7 +170,7 @@ __global__ void traceContoursParallel_kernel(
     const unsigned int* groupCounts,
     const unsigned int numGroups,
     unsigned char* visited,
-    ContourPoint* outputContours,
+    uint2* outputContours,
     unsigned int* outputCounts,
     unsigned int* outputSubjectIDs,
     unsigned int* outputClipperIDs,

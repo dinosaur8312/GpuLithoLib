@@ -1,4 +1,5 @@
 #include "ContourProcessing.cuh"
+#include "GpuKernelProfiler.cuh"
 #include "LayerImpl.h"
 #include "GpuOperations.cuh"
 #include <opencv2/opencv.hpp>
@@ -8,45 +9,8 @@
 
 namespace GpuLithoLib {
 
-// ============================================================================
-// GPU Kernel Profiling Timers
-// ============================================================================
-static float g_extractContours_time_ms = 0.0f;
-static float g_traceContours_time_ms = 0.0f;
-static float g_rayCasting_time_ms = 0.0f;
-static float g_overlay_time_ms = 0.0f;
-static float g_intersectionCompute_time_ms = 0.0f;
-
-// Functions to accumulate timing from other files
-void addRayCastingTime(float ms) { g_rayCasting_time_ms += ms; }
-void addOverlayTime(float ms) { g_overlay_time_ms += ms; }
-void addIntersectionComputeTime(float ms) { g_intersectionCompute_time_ms += ms; }
-
-// Function to print timing summary
-void printGpuKernelTimingSummary() {
-    std::cout << "\n============================================" << std::endl;
-    std::cout << "GPU Kernel Timing Summary" << std::endl;
-    std::cout << "============================================" << std::endl;
-    std::cout << "  Ray Casting:            " << g_rayCasting_time_ms << " ms" << std::endl;
-    std::cout << "  Overlay:                " << g_overlay_time_ms << " ms" << std::endl;
-    std::cout << "  Intersection Compute:   " << g_intersectionCompute_time_ms << " ms" << std::endl;
-    std::cout << "  Extract Contours:       " << g_extractContours_time_ms << " ms" << std::endl;
-    std::cout << "  Trace Contours:         " << g_traceContours_time_ms << " ms" << std::endl;
-    std::cout << "--------------------------------------------" << std::endl;
-    float total = g_rayCasting_time_ms + g_overlay_time_ms + g_intersectionCompute_time_ms +
-                  g_extractContours_time_ms + g_traceContours_time_ms;
-    std::cout << "  Total GPU Kernel Time:  " << total << " ms" << std::endl;
-    std::cout << "============================================\n" << std::endl;
-}
-
-// Function to reset timers
-void resetGpuKernelTimers() {
-    g_extractContours_time_ms = 0.0f;
-    g_traceContours_time_ms = 0.0f;
-    g_rayCasting_time_ms = 0.0f;
-    g_overlay_time_ms = 0.0f;
-    g_intersectionCompute_time_ms = 0.0f;
-}
+// External profiler instance (owned by GpuLithoEngine)
+extern GpuKernelProfiler* g_kernelProfiler;
 
 // ============================================================================
 // ContourDetectEngine Implementation
@@ -105,7 +69,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
 
     float extractMs = 0.0f;
     gpuEventElapsedTime(&extractMs, extractStart, extractStop);
-    g_extractContours_time_ms += extractMs;
+    if (g_kernelProfiler) g_kernelProfiler->addExtractContoursTime(extractMs);
 
     gpuEventDestroy(extractStart);
     gpuEventDestroy(extractStop);
@@ -659,7 +623,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
     // Step 4: Allocate output arrays
     const unsigned int maxPointsPerContour = 1<<13; // 8192 points max per contour
     const unsigned int maxIDsPerGroup = 256;
-    thrust::device_vector<ContourPoint> d_outputContours(numGroups * maxPointsPerContour);
+    thrust::device_vector<uint2> d_outputContours(numGroups * maxPointsPerContour);
     thrust::device_vector<unsigned int> d_outputCounts(numGroups, 0);
 
     // Allocate separate arrays for polygon IDs (instead of ContourPolygonIDs struct)
@@ -704,13 +668,13 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
 
     float traceMs = 0.0f;
     gpuEventElapsedTime(&traceMs, traceStart, traceStop);
-    g_traceContours_time_ms += traceMs;
+    if (g_kernelProfiler) g_kernelProfiler->addTraceContoursTime(traceMs);
 
     gpuEventDestroy(traceStart);
     gpuEventDestroy(traceStop);
 
     // Step 6: Copy results back to host
-    thrust::host_vector<ContourPoint> h_outputContours = d_outputContours;
+    thrust::host_vector<uint2> h_outputContours = d_outputContours;
     thrust::host_vector<unsigned int> h_outputCounts = d_outputCounts;
     thrust::host_vector<unsigned int> h_subject_ids = d_subject_ids;
     thrust::host_vector<unsigned int> h_clipper_ids = d_clipper_ids;
@@ -734,7 +698,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
                 if (contourInGroup == 0) {
                     // First contour: find length by scanning until marker or end
                     while (i < totalCount) {
-                        ContourPoint pt = h_outputContours[baseIdx + i];
+                        uint2 pt = h_outputContours[baseIdx + i];
                         if (pt.x == 0xFFFFFFFF) {
                             // Found marker for next contour
                             break;
@@ -744,7 +708,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
                     contourLen = i - startIdx;
                 } else {
                     // Subsequent contours: current position should be at marker
-                    ContourPoint marker = h_outputContours[baseIdx + i];
+                    uint2 marker = h_outputContours[baseIdx + i];
                     if (marker.x == 0xFFFFFFFF) {
                         contourLen = marker.y;
                         i++; // Skip marker
@@ -763,7 +727,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
                     contour.reserve(contourLen);
 
                     for (unsigned int j = 0; j < contourLen; ++j) {
-                        ContourPoint pt = h_outputContours[baseIdx + startIdx + j];
+                        uint2 pt = h_outputContours[baseIdx + startIdx + j];
                         contour.push_back(cv::Point(pt.x, pt.y));
                     }
 
@@ -1004,7 +968,7 @@ __device__ void traceOneContour(
     unsigned int groupStart,
     unsigned int groupCount,
     unsigned char* visited,
-    ContourPoint* outputContour,
+    uint2* outputContour,
     unsigned int* outputCount,
     unsigned int* subjectIDs,
     unsigned int* clipperIDs,
@@ -1162,7 +1126,7 @@ __global__ void traceContoursParallel_kernel(
     const unsigned int* groupCounts,
     const unsigned int numGroups,
     unsigned char* visited,
-    ContourPoint* outputContours,
+    uint2* outputContours,
     unsigned int* outputCounts,
     unsigned int* outputSubjectIDs,
     unsigned int* outputClipperIDs,
@@ -1205,7 +1169,7 @@ __global__ void traceContoursParallel_kernel(
             if (visited[sortedIdx] == 0) {
                 // Start a new contour from this pixel
                 unsigned int localCount = 0;
-                ContourPoint* contourOutput = outputContours + groupIdx * maxPointsPerContour;
+                uint2* contourOutput = outputContours + groupIdx * maxPointsPerContour;
                 unsigned int currentOffset = outputCounts[groupIdx];
 
                 // For second and subsequent contours, add a delimiter marker first
