@@ -335,7 +335,138 @@ public:
             gpuEventDestroy(stop);
         }
     }
-    
+
+    // Perform optimized scanline ray casting on a layer (Range-based approach)
+    void performScanlineRayCasting(LayerImpl* layer, int edgeMode = 1) {
+        if (!layer || layer->empty()) return;
+
+        layer->ensureBitmapAllocated(currentGridWidth, currentGridHeight);
+        layer->copyToDevice();
+        layer->calculateBoundingBoxes();
+
+        gpuEvent_t start, stop;
+        if (profilingEnabled) {
+            gpuEventCreate(&start);
+            gpuEventCreate(&stop);
+            gpuEventRecord(start);
+        }
+
+        const unsigned int maxRangesPerScanline = 32;
+
+        // Step 1: Allocate separate edge bitmap
+        unsigned int bitmapSize = currentGridWidth * currentGridHeight;
+        unsigned int* d_edgeBitmap = nullptr;
+        CHECK_GPU_ERROR(gpuMalloc(&d_edgeBitmap, bitmapSize * sizeof(unsigned int)));
+        CHECK_GPU_ERROR(gpuMemset(d_edgeBitmap, 0, bitmapSize * sizeof(unsigned int)));
+
+        // Step 2: Calculate total scanlines needed and scanline offsets
+        // Copy bounding boxes to host to compute offsets
+        thrust::device_vector<uint4> d_boxes_vec(layer->d_boxes, layer->d_boxes + layer->polygonCount);
+        thrust::host_vector<uint4> h_boxes = d_boxes_vec;
+
+        thrust::host_vector<unsigned int> h_scanlineOffsets(layer->polygonCount + 1);
+        unsigned int totalScanlines = 0;
+        for (unsigned int i = 0; i < layer->polygonCount; i++) {
+            h_scanlineOffsets[i] = totalScanlines;
+            unsigned int boxHeight = h_boxes[i].w - h_boxes[i].y;
+            totalScanlines += boxHeight;
+        }
+        h_scanlineOffsets[layer->polygonCount] = totalScanlines;
+
+        // Allocate device buffers for scanline ranges
+        unsigned int* d_scanlineOffsets = nullptr;
+        uint2* d_scanlineRanges = nullptr;
+        unsigned int* d_scanlineRangeCounts = nullptr;
+
+        CHECK_GPU_ERROR(gpuMalloc(&d_scanlineOffsets, (layer->polygonCount + 1) * sizeof(unsigned int)));
+        CHECK_GPU_ERROR(gpuMalloc(&d_scanlineRanges, totalScanlines * maxRangesPerScanline * sizeof(uint2)));
+        CHECK_GPU_ERROR(gpuMalloc(&d_scanlineRangeCounts, totalScanlines * sizeof(unsigned int)));
+
+        CHECK_GPU_ERROR(gpuMemcpy(d_scanlineOffsets, h_scanlineOffsets.data(),
+                                  (layer->polygonCount + 1) * sizeof(unsigned int), gpuMemcpyHostToDevice));
+        CHECK_GPU_ERROR(gpuMemset(d_scanlineRangeCounts, 0, totalScanlines * sizeof(unsigned int)));
+
+        // Step 3: Render edges to edge bitmap
+        gpuEvent_t rcStart, rcStop;
+        gpuEventCreate(&rcStart);
+        gpuEventCreate(&rcStop);
+        gpuEventRecord(rcStart);
+
+        edgeRender_kernel<<<layer->polygonCount, 256>>>(
+            layer->d_vertices,
+            layer->d_startIndices,
+            layer->d_ptCounts,
+            d_edgeBitmap,
+            currentGridWidth,
+            currentGridHeight,
+            1);  // mode=1 to render edges
+        CHECK_GPU_ERROR(gpuGetLastError());
+
+        // Step 4: Check edge-right neighbors and mark inside/outside
+        checkEdgeRightNeighbor_kernel<<<layer->polygonCount, 256>>>(
+            layer->d_vertices,
+            layer->d_startIndices,
+            layer->d_ptCounts,
+            layer->d_boxes,
+            d_edgeBitmap,
+            currentGridWidth,
+            currentGridHeight,
+            layer->polygonCount);
+        CHECK_GPU_ERROR(gpuGetLastError());
+
+        // Step 5: Find scanline ranges
+        findScanlineRanges_kernel<<<layer->polygonCount, 256>>>(
+            d_edgeBitmap,
+            layer->d_boxes,
+            d_scanlineOffsets,
+            d_scanlineRanges,
+            d_scanlineRangeCounts,
+            currentGridWidth,
+            currentGridHeight,
+            layer->polygonCount,
+            maxRangesPerScanline);
+        CHECK_GPU_ERROR(gpuGetLastError());
+
+        // Step 6: Render polygon interiors using ranges
+        renderScanlineRanges_kernel<<<layer->polygonCount, 256>>>(
+            layer->d_boxes,
+            d_scanlineOffsets,
+            d_scanlineRanges,
+            d_scanlineRangeCounts,
+            layer->d_bitmap,
+            currentGridWidth,
+            currentGridHeight,
+            layer->polygonCount,
+            maxRangesPerScanline);
+        CHECK_GPU_ERROR(gpuGetLastError());
+
+        gpuEventRecord(rcStop);
+        gpuEventSynchronize(rcStop);
+
+        float rcMs = 0.0f;
+        gpuEventElapsedTime(&rcMs, rcStart, rcStop);
+        kernelProfiler.addRayCastingTime(rcMs);
+
+        gpuEventDestroy(rcStart);
+        gpuEventDestroy(rcStop);
+
+        // Clean up temporary buffers
+        gpuFree(d_edgeBitmap);
+        gpuFree(d_scanlineOffsets);
+        gpuFree(d_scanlineRanges);
+        gpuFree(d_scanlineRangeCounts);
+
+        if (profilingEnabled) {
+            gpuEventRecord(stop);
+            gpuEventSynchronize(stop);
+            float elapsed;
+            gpuEventElapsedTime(&elapsed, start, stop);
+            totalRayCastingTime += elapsed;
+            gpuEventDestroy(start);
+            gpuEventDestroy(stop);
+        }
+    }
+
     // Perform overlay operation
     void performOverlay(LayerImpl* subject, LayerImpl* clipper, LayerImpl* output) {
         if (!subject || !clipper || !output) return;
@@ -481,10 +612,15 @@ public:
         kernelProfiler.reset();
 
         auto output = std::make_unique<LayerImpl>();
-        
+
         // Step 1: Ray casting for both layers
-        performRayCasting(preparedLayer1.get(), (opType == OperationType::DIFFERENCE) ? 1 : 1);
-        performRayCasting(preparedLayer2.get(), (opType == OperationType::DIFFERENCE) ? 0 : 1);
+        // Old method (commented out):
+        // performRayCasting(preparedLayer1.get(), (opType == OperationType::DIFFERENCE) ? 1 : 1);
+        // performRayCasting(preparedLayer2.get(), (opType == OperationType::DIFFERENCE) ? 0 : 1);
+
+        // New optimized scanline method:
+        performScanlineRayCasting(preparedLayer1.get(), (opType == OperationType::DIFFERENCE) ? 1 : 1);
+        performScanlineRayCasting(preparedLayer2.get(), (opType == OperationType::DIFFERENCE) ? 0 : 1);
         
         // Step 2: Overlay
         performOverlay(preparedLayer1.get(), preparedLayer2.get(), output.get());
@@ -573,7 +709,11 @@ public:
             offsetLayer->ensureBitmapAllocated(currentGridWidth, currentGridHeight);
             
             // First, render the layer to bitmap
-            performRayCasting(offsetLayer.get(), 1);
+            // Old method (commented out):
+            // performRayCasting(offsetLayer.get(), 1);
+
+            // New optimized scanline method:
+            performScanlineRayCasting(offsetLayer.get(), 1);
             
             // Apply offset using morphological operation
             bool positiveOffset = offsetDistance > 0;

@@ -51,6 +51,7 @@ public:
 
     // GPU operation wrappers
     void performRayCasting(LayerImpl* layer, int edgeMode = 1);
+    void performScanlineRayCasting(LayerImpl* layer, int edgeMode = 1);
     void performOverlay(LayerImpl* subject, LayerImpl* clipper, LayerImpl* output);
 
     // Contour extraction (simplified version)

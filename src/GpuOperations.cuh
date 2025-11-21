@@ -23,6 +23,67 @@ __global__ void rayCasting_kernel(
     const unsigned int polygonNum);
 
 /**
+ * @brief Optimized scanline ray casting kernel - uses edge bitmap for fast interior filling
+ * Uses 32x16 thread blocks for warp-level optimization with edge-based skipping
+ */
+__global__ void rayCasting_scanline_kernel(
+    const uint2* vertices,
+    const unsigned int* startIndices,
+    const unsigned int* ptCounts,
+    const uint4* boxes,
+    const unsigned int* edgeBitmap,
+    unsigned int* bitmap,
+    const int bitmapWidth,
+    const int bitmapHeight,
+    const unsigned int polygonNum);
+
+/**
+ * @brief Check edge-right neighbor pixels and mark inside/outside status
+ * For each edge pixel, checks if (x+1, y) is inside or outside the polygon using ray casting
+ * Marks upper 16 bits = 0xFFFF if inside, lower 16 bits = 0xFFFF if outside
+ */
+__global__ void checkEdgeRightNeighbor_kernel(
+    const uint2* vertices,
+    const unsigned int* startIndices,
+    const unsigned int* ptCounts,
+    const uint4* boxes,
+    unsigned int* edgeBitmap,
+    const int bitmapWidth,
+    const int bitmapHeight,
+    const unsigned int polygonNum);
+
+/**
+ * @brief Find inside ranges for each scanline
+ * Each thread processes one scanline, finds (xstart, xend) pairs
+ * Stores up to 32 ranges per scanline in d_scanlineRanges
+ */
+__global__ void findScanlineRanges_kernel(
+    const unsigned int* edgeBitmap,
+    const uint4* boxes,
+    const unsigned int* scanlineOffsets,
+    uint2* scanlineRanges,
+    unsigned int* scanlineRangeCounts,
+    const int bitmapWidth,
+    const int bitmapHeight,
+    const unsigned int polygonNum,
+    const unsigned int maxRangesPerScanline);
+
+/**
+ * @brief Render polygon interior using precomputed scanline ranges
+ * Each block processes one polygon, threads cooperatively fill ranges
+ */
+__global__ void renderScanlineRanges_kernel(
+    const uint4* boxes,
+    const unsigned int* scanlineOffsets,
+    const uint2* scanlineRanges,
+    const unsigned int* scanlineRangeCounts,
+    unsigned int* bitmap,
+    const int bitmapWidth,
+    const int bitmapHeight,
+    const unsigned int polygonNum,
+    const unsigned int maxRangesPerScanline);
+
+/**
  * @brief Edge rendering kernel - renders polygon edges
  */
 __global__ void edgeRender_kernel(
