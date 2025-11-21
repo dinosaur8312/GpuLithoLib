@@ -481,12 +481,24 @@ public:
                 for (unsigned int i = 0; i < ptCount; i++) {
                     uint2 v1 = layer->h_vertices[startIdx + i];
                     uint2 v2 = layer->h_vertices[startIdx + (i + 1) % ptCount];
+                        // define a color based on polygon index
+                        cv::Scalar color;
+                        if (p <= 102) {
+                            color = cv::Scalar(0, 255, 0);  // Green
+                        } else if (p <= 103) {
+                            color = cv::Scalar(0, 0, 255);  // Red
+                        } else if (p <= 105) {
+                            color = cv::Scalar(255, 0, 0);  // Blue
+                        }
+                        else {
+                            color = cv::Scalar(0, 0, 0);    // Black
+                        }
 
-                    cv::line(image,
-                             cv::Point(v1.x, v1.y),
-                             cv::Point(v2.x, v2.y),
-                             cv::Scalar(0, 0, 255),  // Red outline
-                             1, cv::LINE_AA);
+                        cv::line(image,
+                                cv::Point(v1.x, v1.y),
+                                cv::Point(v2.x, v2.y),
+                                color,
+                                1, cv::LINE_AA);
                 }
             }
 

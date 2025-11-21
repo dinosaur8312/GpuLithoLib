@@ -395,6 +395,11 @@ __global__ void checkEdgeRightNeighbor_kernel(
     int polygonIdx = blockIdx.x;
     if (polygonIdx >= polygonNum) return;
 
+    bool debug = false;
+    if (polygonIdx == 103) {
+        debug = true;
+    }
+
     int startIdx = startIndices[polygonIdx];
     int ptCount = ptCounts[polygonIdx];
     uint4 box = boxes[polygonIdx];
@@ -447,7 +452,7 @@ __global__ void checkEdgeRightNeighbor_kernel(
                     // Skip if right neighbor is out of bounds or beyond box
                     if (testX >= bitmapWidth || testX > (int)box.z) {
                         // Mark as outside (right neighbor out of bounds)
-                        atomicOr(&edgeBitmap[pixelIdx], 0x00FF0000);  // Outside marker
+                        edgeBitmap[pixelIdx] = 0x0000FFFF;  // Outside marker
                         continue;
                     }
 
@@ -483,11 +488,21 @@ __global__ void checkEdgeRightNeighbor_kernel(
                         }
                     }
 
-                    // Mark edge pixel with inside/outside status in upper 16 bits
+                    // Mark edge pixel with inside/outside status
                     if (isInside) {
-                        atomicOr(&edgeBitmap[pixelIdx], 0xFFFF0000);  // Inside marker
+                        edgeBitmap[pixelIdx] = 0xFFFF0000;  // Inside marker
+                        // Debug for polygon 103 - only print for min y (first scanline)
+                        if (debug && iy == (int)box.y) {
+                            printf("DEBUG polygon 103 checkEdgeRightNeighbor: edge(%d,%d) right-neighbor(%d,%d) marked INSIDE\n",
+                                   ix, iy, testX, testY);
+                        }
                     } else {
-                        atomicOr(&edgeBitmap[pixelIdx], 0x00FF0000);  // Outside marker
+                        edgeBitmap[pixelIdx] = 0x0000FFFF;  // Outside marker
+                        // Debug for polygon 103 - only print for min y (first scanline)
+                        if (debug && iy == (int)box.y) {
+                            printf("DEBUG polygon 103 checkEdgeRightNeighbor: edge(%d,%d) right-neighbor(%d,%d) marked OUTSIDE\n",
+                                   ix, iy, testX, testY);
+                        }
                     }
                 }
             }
@@ -510,6 +525,8 @@ __global__ void findScanlineRanges_kernel(
 {
     int polygonIdx = blockIdx.x;
     if (polygonIdx >= polygonNum) return;
+
+    bool debug = (polygonIdx == 103);
 
     uint4 box = boxes[polygonIdx];
     unsigned int edgeMarker = polygonIdx + 1;  // Same as edgeRender
@@ -535,9 +552,14 @@ __global__ void findScanlineRanges_kernel(
 
             int pixelIdx = globalY * bitmapWidth + globalX;
             unsigned int edgeValue = edgeBitmap[pixelIdx];
-            unsigned int lowerBits = edgeValue & 0xFFFF;
 
-            if (lowerBits == edgeMarker) {
+            // Check for inside marker (0xFFFF0000) or outside marker (0x0000FFFF)
+            // These markers indicate processed edge pixels
+            bool isInsideMarker = (edgeValue == 0xFFFF0000);
+            bool isOutsideMarker = (edgeValue == 0x0000FFFF);
+            bool isEdgePixel = isInsideMarker || isOutsideMarker;
+
+            if (isEdgePixel) {
                 // This is an edge pixel of our polygon
                 if (insideRegion) {
                     // End current inside region at this edge
@@ -548,9 +570,8 @@ __global__ void findScanlineRanges_kernel(
                     insideRegion = false;
                 }
 
-                // Check if right neighbor is inside (0xFFFF in upper 16 bits)
-                unsigned int upperBits = edgeValue >> 16;
-                if (upperBits == 0xFFFF) {
+                // Check if right neighbor is inside (0xFFFF0000)
+                if (isInsideMarker) {
                     // Right neighbor is inside, start new region after this edge
                     insideRegion = true;
                     rangeStart = globalX + 1;
@@ -565,6 +586,14 @@ __global__ void findScanlineRanges_kernel(
         }
 
         scanlineRangeCounts[scanlineIdx] = rangeCount;
+
+        // Debug for polygon 103 - only print for first scanline (min y)
+        if (debug && rangeCount > 0 && globalY == (int)box.y) {
+            for (unsigned int r = 0; r < rangeCount; r++) {
+                printf("DEBUG polygon 103 findScanlineRanges: y=%d, range %u/%u: (%u-%u)\n",
+                       globalY, r + 1, rangeCount, rangeOutput[r].x, rangeOutput[r].y);
+            }
+        }
     }
 }
 

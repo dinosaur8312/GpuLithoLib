@@ -31,6 +31,12 @@ __global__ void calculatePolygonBoundingBoxes(
             maxY = max(maxY, vertex.y);
         }
         boxes[polygonIdx] = {minX, minY, maxX, maxY};
+
+        // Debug for polygon 103
+        if (polygonIdx == 103) {
+            printf("DEBUG polygon 103 bounding box: (%u, %u) - (%u, %u), width=%u, height=%u\n",
+                   minX, minY, maxX, maxY, maxX - minX, maxY - minY);
+        }
     }
 }
 

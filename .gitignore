@@ -1,5 +1,6 @@
 # Build directories
-build/
+build/*
+!build/*.png
 cmake-build-*/
 out/
 
@@ -76,7 +77,7 @@ ehthumbs.db
 Thumbs.db
 
 # Output files (but keep important .txt source files)
-*.png
+# *.png is NOT globally ignored - build/*.png exception needs to work
 *.jpg
 *.jpeg
 *.bmp
