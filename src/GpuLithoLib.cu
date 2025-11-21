@@ -450,6 +450,50 @@ public:
         gpuEventDestroy(rcStart);
         gpuEventDestroy(rcStop);
 
+        // Debug: Save bitmap visualization with polygon outlines
+        {
+            static int debugCounter = 0;
+            std::string filename = "debug_scanline_bitmap_" + std::to_string(debugCounter++) + ".png";
+
+            // Copy bitmap from device to host
+            std::vector<unsigned int> h_bitmap(bitmapSize);
+            CHECK_GPU_ERROR(gpuMemcpy(h_bitmap.data(), layer->d_bitmap,
+                                      bitmapSize * sizeof(unsigned int), gpuMemcpyDeviceToHost));
+
+            // Create color image for visualization
+            cv::Mat image(currentGridHeight, currentGridWidth, CV_8UC3, cv::Scalar(255, 255, 255));
+
+            // Draw filled regions (blue for any polygon)
+            for (unsigned int y = 0; y < currentGridHeight; y++) {
+                for (unsigned int x = 0; x < currentGridWidth; x++) {
+                    unsigned int val = h_bitmap[y * currentGridWidth + x];
+                    if (val > 0) {
+                        image.at<cv::Vec3b>(y, x) = cv::Vec3b(200, 150, 100);  // Light blue fill
+                    }
+                }
+            }
+
+            // Draw polygon outlines using CPU vertex data
+            for (unsigned int p = 0; p < layer->polygonCount; p++) {
+                unsigned int startIdx = layer->h_startIndices[p];
+                unsigned int ptCount = layer->h_ptCounts[p];
+
+                for (unsigned int i = 0; i < ptCount; i++) {
+                    uint2 v1 = layer->h_vertices[startIdx + i];
+                    uint2 v2 = layer->h_vertices[startIdx + (i + 1) % ptCount];
+
+                    cv::line(image,
+                             cv::Point(v1.x, v1.y),
+                             cv::Point(v2.x, v2.y),
+                             cv::Scalar(0, 0, 255),  // Red outline
+                             1, cv::LINE_AA);
+                }
+            }
+
+            cv::imwrite(filename, image);
+            std::cout << "Saved debug bitmap: " << filename << std::endl;
+        }
+
         // Clean up temporary buffers
         gpuFree(d_edgeBitmap);
         gpuFree(d_scanlineOffsets);
