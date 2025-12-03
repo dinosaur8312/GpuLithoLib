@@ -758,6 +758,107 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
 
     std::cout << "GPU tracing complete: extracted " << contours.size() << " contours" << std::endl;
 
+    // ========== VISUALIZATION: Save GPU contour plot ==========
+    // Create blank image for visualization
+    cv::Mat visImage = cv::Mat::zeros(height, width, CV_8UC3);
+
+    // Copy unique values to host for group ID lookup
+    thrust::host_vector<unsigned int> h_unique_values(d_unique_values);
+
+    // Draw each contour with color based on group ID
+    unsigned int contourIdx = 0;
+    for (unsigned int g = 0; g < numGroups; ++g) {
+        unsigned int totalCount = h_outputCounts[g];
+        if (totalCount > 0) {
+            unsigned int baseIdx = g * maxPointsPerContour;
+            unsigned int i = 0;
+            unsigned int contourInGroup = 0;
+
+            // Determine color based on group ID
+            cv::Scalar color;
+            if (g < 100) {
+                color = cv::Scalar(0, 0, 255); // Red (BGR format)
+            } else if (g < 200) {
+                color = cv::Scalar(0, 255, 0); // Green
+            } else {
+                color = cv::Scalar(255, 0, 0); // Blue
+            }
+
+            while (i < totalCount) {
+                // Determine contour length
+                unsigned int contourLen = 0;
+                unsigned int startIdx = i;
+
+                if (contourInGroup == 0) {
+                    // First contour: find length by scanning until marker or end
+                    while (i < totalCount) {
+                        uint2 pt = h_outputContours[baseIdx + i];
+                        if (pt.x == 0xFFFFFFFF) {
+                            // Found marker for next contour
+                            break;
+                        }
+                        i++;
+                    }
+                    contourLen = i - startIdx;
+                } else {
+                    // Subsequent contours: current position should be at marker
+                    uint2 marker = h_outputContours[baseIdx + i];
+                    if (marker.x == 0xFFFFFFFF) {
+                        contourLen = marker.y;
+                        i++; // Skip marker
+                        startIdx = i;
+                        i += contourLen; // Move past contour points
+                    } else {
+                        // Unexpected: not a marker, skip
+                        i++;
+                        continue;
+                    }
+                }
+
+                // Draw contour if it has points
+                if (contourLen > 0) {
+                    // Draw lines connecting the contour points
+                    for (unsigned int j = 0; j < contourLen; ++j) {
+                        uint2 pt1 = h_outputContours[baseIdx + startIdx + j];
+                        uint2 pt2 = h_outputContours[baseIdx + startIdx + ((j + 1) % contourLen)];
+
+                        cv::Point p1(pt1.x, pt1.y);
+                        cv::Point p2(pt2.x, pt2.y);
+                        cv::line(visImage, p1, p2, color, 1, cv::LINE_AA);
+                    }
+
+                    // Decompose group value to get subject_id and clipper_id
+                    unsigned int groupValue = h_unique_values[g];
+                    unsigned int subject_id = (groupValue & 0xFFFF) - 1; // Lower 16 bits, subtract 1
+                    unsigned int clipper_id = ((groupValue >> 16) & 0xFFFF) - 1; // Upper 16 bits, subtract 1
+
+                    // Get first point for label placement
+                    uint2 firstPt = h_outputContours[baseIdx + startIdx];
+                    cv::Point labelPos(firstPt.x + 5, firstPt.y - 5); // Offset slightly from point
+
+                    // Create label text
+                    std::string label = "(" + std::to_string(subject_id) + "," + std::to_string(clipper_id) + ")";
+
+                    // Draw label without background (transparent)
+                    cv::putText(visImage, label, labelPos, cv::FONT_HERSHEY_SIMPLEX, 0.3,
+                                cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+
+                    contourIdx++;
+                }
+
+                contourInGroup++;
+            }
+        }
+    }
+
+    // Save visualization
+    std::string outputFilename = "gpu_contour_tracing_visualization.png";
+    cv::imwrite(outputFilename, visImage);
+    std::cout << "Saved GPU contour visualization to: " << outputFilename << std::endl;
+    std::cout << "  Color coding: RED (groups 0-99), GREEN (groups 100-199), BLUE (groups 200+)" << std::endl;
+    std::cout << "  Labels show (subject_id, clipper_id) at first point of each contour" << std::endl;
+    // ========== END VISUALIZATION ==========
+
     return contours;
 }
 
@@ -985,8 +1086,8 @@ __device__ void traceOneContour(
     unsigned int startX = startIdx % width;
     unsigned int startY = startIdx / width;
 
-    // Debug output for first block only
-    bool debug = (groupIdx == 0);
+    // Debug output for group 11 only
+    bool debug = (groupIdx == 11);
 
     // Initialize polygon ID counts
     *subjectCount = 0;
@@ -1004,8 +1105,9 @@ __device__ void traceOneContour(
     unsigned int pointCount = 0;
 
     if (debug) {
-        printf("[Group %u, Contour %u] Starting trace at (%u, %u), targetValue=%u\n",
-               groupIdx, contourIdx, startX, startY, targetValue);
+        printf("# [Group %u, Contour %u] Starting trace at (%u, %u), targetValue=%u, startSortedIdx=%u\n",
+               groupIdx, contourIdx, startX, startY, targetValue, startSortedIdx);
+        printf("contour_%u_%u = [\n", groupIdx, contourIdx);
     }
 
     // Add starting point
@@ -1014,7 +1116,9 @@ __device__ void traceOneContour(
         outputContour[pointCount].y = currentY;
         pointCount++;
         if (debug) {
-            printf("  Point %u: (%u, %u)\n", pointCount - 1, currentX, currentY);
+            printf("    (%u, %u),  # Point %u | sortedIdx=%u, wasVisited=%d\n",
+                   currentX, currentY, pointCount - 1, startSortedIdx,
+                   visited[startSortedIdx] != 0 ? 1 : 0);
         }
     }
 
@@ -1051,7 +1155,22 @@ __device__ void traceOneContour(
                 contourBitmap, nextX, nextY, width, height);
 
             if (pixelValue == targetValue) {
-                // Found next contour pixel
+                // Check visited status BEFORE accepting this pixel
+                unsigned int nextIdx = nextY * width + nextX;
+                int sortedIdx = findSortedIndex(
+                    sortedIndices, nextIdx, groupStart, groupCount);
+                bool wasVisited = (sortedIdx >= 0) ? (visited[sortedIdx] != 0) : false;
+
+                // Skip already-visited pixels (except when returning to start to close contour)
+                if (wasVisited && !(nextX == startX && nextY == startY)) {
+                    if (debug) {
+                        printf("# Skipping already-visited pixel (%d, %d) at direction %d\n",
+                               nextX, nextY, checkDir);
+                    }
+                    continue; // Skip this pixel and try next direction
+                }
+
+                // Found next contour pixel (unvisited or returning to start)
                 currentX = nextX;
                 currentY = nextY;
                 currentDir = checkDir;
@@ -1062,7 +1181,7 @@ __device__ void traceOneContour(
                     // Closed contour
                     *outputCount = pointCount;
                     if (debug) {
-                        printf("[Group %u, Contour %u] Closed contour with %u points\n",
+                        printf("]\n# [Group %u, Contour %u] Closed contour with %u points\n\n",
                                groupIdx, contourIdx, pointCount);
                     }
                     return;
@@ -1074,7 +1193,8 @@ __device__ void traceOneContour(
                     outputContour[pointCount].x = currentX;
                     outputContour[pointCount].y = currentY;
                     if (debug) {
-                        printf("  Point %u: (%u, %u)\n", pointCount, currentX, currentY);
+                        printf("    (%u, %u),  # Point %u | sortedIdx=%d, wasVisited=%d\n",
+                               currentX, currentY, pointCount, sortedIdx, wasVisited ? 1 : 0);
                     }
                     pointCount++;
                 }
@@ -1087,9 +1207,6 @@ __device__ void traceOneContour(
                 addPolygonID(clipperIDs, clipperCount, clipper_id, 256);
 
                 // Mark as visited
-                unsigned int currentIdx = currentY * width + currentX;
-                int sortedIdx = findSortedIndex(
-                    sortedIndices, currentIdx, groupStart, groupCount);
                 if (sortedIdx >= 0) {
                     visited[sortedIdx] = 1;
                 }
@@ -1101,7 +1218,7 @@ __device__ void traceOneContour(
         if (!found) {
             // No neighbor found, end tracing
             if (debug) {
-                printf("[Group %u, Contour %u] No neighbor found, ending trace with %u points\n",
+                printf("]\n# [Group %u, Contour %u] No neighbor found, ending trace with %u points (OPEN contour)\n\n",
                        groupIdx, contourIdx, pointCount);
             }
             break;
@@ -1109,8 +1226,10 @@ __device__ void traceOneContour(
     }// while (iterCount < maxIter)
 
     *outputCount = pointCount;
-    if (debug && pointCount > 0) {
-        printf("[Group %u, Contour %u] Trace complete, total points: %u\n",
+
+    // If we exited the loop without printing the closing bracket (max iterations reached)
+    if (debug && pointCount > 0 && iterCount >= maxIter) {
+        printf("]\n# [Group %u, Contour %u] Max iterations reached, trace incomplete with %u points\n\n",
                groupIdx, contourIdx, pointCount);
     }
 }

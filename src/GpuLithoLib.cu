@@ -392,7 +392,7 @@ public:
         gpuEventCreate(&rcStop);
         gpuEventRecord(rcStart);
 
-        edgeRender_kernel<<<layer->polygonCount, 256>>>(
+        edgeRender_kernel<<<layer->polygonCount, 512>>>(
             layer->d_vertices,
             layer->d_startIndices,
             layer->d_ptCounts,
@@ -403,7 +403,7 @@ public:
         CHECK_GPU_ERROR(gpuGetLastError());
 
         // Step 4: Check edge-right neighbors and mark inside/outside
-        checkEdgeRightNeighbor_kernel<<<layer->polygonCount, 256>>>(
+        checkEdgeRightNeighbor_kernel<<<layer->polygonCount, 512>>>(
             layer->d_vertices,
             layer->d_startIndices,
             layer->d_ptCounts,
@@ -415,7 +415,7 @@ public:
         CHECK_GPU_ERROR(gpuGetLastError());
 
         // Step 5: Find scanline ranges
-        findScanlineRanges_kernel<<<layer->polygonCount, 256>>>(
+        findScanlineRanges_kernel<<<layer->polygonCount, 512>>>(
             d_edgeBitmap,
             layer->d_boxes,
             d_scanlineOffsets,
@@ -428,7 +428,7 @@ public:
         CHECK_GPU_ERROR(gpuGetLastError());
 
         // Step 6: Render polygon interiors using ranges
-        renderScanlineRanges_kernel<<<layer->polygonCount, 256>>>(
+        renderScanlineRanges_kernel<<<layer->polygonCount, 512>>>(
             layer->d_boxes,
             d_scanlineOffsets,
             d_scanlineRanges,

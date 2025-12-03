@@ -31,6 +31,7 @@ int main() {
         std::cout << "Clipper layer: " << clipperLayer.getPolygonCount() << " polygons, "
                   << clipperLayer.getVertexCount() << " vertices\n\n";
 
+        
         std::cout << "=== Performing Intersection ===\n";
         // Perform intersection
         Layer result = engine.layerIntersection(subjectLayer, clipperLayer);
@@ -54,8 +55,8 @@ int main() {
 
         if (!groundTruth.empty()) {
             engine.visualizeVerificationComparison(result, groundTruth,
-                "intersection_verification.png");
-            std::cout << "Generated: intersection_verification.png (comparison with ground truth)\n";
+                "intersection_raw_binary_vs_ground_truth_verification.png");
+            std::cout << "Generated: intersection_raw_binary_vs_ground_truth_verification.png (comparison with ground truth)\n";
         }
 
         std::cout << "\n=== GPU vs OpenCV Contour Comparison ===\n";
