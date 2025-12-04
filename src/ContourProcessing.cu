@@ -220,15 +220,40 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
             }
         }
 
-        // Save comparison image
-        std::string comparisonFilename = "contour_comparison_intersection.png";
+        // Save comparison image (CPU first, GPU on top)
+        std::string comparisonFilename = "contour_comparison_intersection_cpu_gpu.png";
         cv::imwrite(comparisonFilename, comparisonImage);
         std::cout << "  Saved comparison to: " << comparisonFilename << std::endl;
-        std::cout << "  Color legend: GREEN=OpenCV contours, RED=GPU contours (overlay)" << std::endl;
+        std::cout << "  Color legend: GREEN=OpenCV contours (bottom), RED=GPU contours (overlay on top)" << std::endl;
         std::cout << "  Note: If GREEN is visible, GPU is missing that part" << std::endl;
 
+        // Create reverse order comparison image (GPU first, CPU on top)
+        cv::Mat reverseComparisonImage = cv::Mat::zeros(currentGridHeight, currentGridWidth, CV_8UC3);
+
+        // Draw GPU contours in RED first (bottom layer)
+        for (size_t i = 0; i < gpuContours.size(); ++i) {
+            if (gpuContours[i].size() > 1) {
+                cv::polylines(reverseComparisonImage, gpuContours[i], true, redColor, 1, cv::LINE_8);
+            }
+        }
+
+        // Draw OpenCV contours in GREEN on top (overlay)
+        for (size_t i = 0; i < contours.size(); ++i) {
+            if (contours[i].size() > 1) {
+                cv::polylines(reverseComparisonImage, contours[i], true, greenColor, 1, cv::LINE_8);
+            }
+        }
+
+        // Save reverse order comparison image
+        std::string reverseComparisonFilename = "contour_comparison_intersection_gpu_cpu.png";
+        cv::imwrite(reverseComparisonFilename, reverseComparisonImage);
+        std::cout << "  Saved reverse comparison to: " << reverseComparisonFilename << std::endl;
+        std::cout << "  Color legend: RED=GPU contours (bottom), GREEN=OpenCV contours (overlay on top)" << std::endl;
+        std::cout << "  Note: If RED is visible, OpenCV is missing that part" << std::endl;
+
         // Return GPU contours for INTERSECTION since that's the new implementation
-        return gpuContours;
+     //   return gpuContours;
+        return contours;
     }
 
     return contours;
@@ -631,6 +656,99 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
     thrust::device_vector<unsigned int> d_clipper_ids(numGroups * maxIDsPerGroup);
     thrust::device_vector<unsigned int> d_subject_counts(numGroups, 0);
     thrust::device_vector<unsigned int> d_clipper_counts(numGroups, 0);
+
+    // ========== DEBUG: Visualize Group 11 contour pixels ==========
+    const unsigned int DEBUG_GROUP = 11;
+    if (DEBUG_GROUP < numGroups) {
+        // Copy data to host
+        thrust::host_vector<unsigned int> h_group_starts = d_group_starts;
+        thrust::host_vector<unsigned int> h_group_counts = d_group_counts;
+        thrust::host_vector<unsigned int> h_unique_values = d_unique_values;
+        thrust::host_vector<unsigned int> h_sortedIndices = sortedPixels.indices;
+
+        unsigned int groupStart = h_group_starts[DEBUG_GROUP];
+        unsigned int groupCount = h_group_counts[DEBUG_GROUP];
+        unsigned int groupValue = h_unique_values[DEBUG_GROUP];
+
+        std::cout << "DEBUG Group " << DEBUG_GROUP << ": value=" << groupValue
+                  << ", start=" << groupStart << ", count=" << groupCount << std::endl;
+
+        // Find bounding box of group 11 pixels
+        unsigned int minX = width, maxX = 0, minY = height, maxY = 0;
+        for (unsigned int i = 0; i < groupCount; ++i) {
+            unsigned int pixelIdx = h_sortedIndices[groupStart + i];
+            unsigned int px = pixelIdx % width;
+            unsigned int py = pixelIdx / width;
+            minX = std::min(minX, px);
+            maxX = std::max(maxX, px);
+            minY = std::min(minY, py);
+            maxY = std::max(maxY, py);
+        }
+
+        // Add margin for better visualization
+        unsigned int margin = 5;
+        minX = (minX > margin) ? (minX - margin) : 0;
+        minY = (minY > margin) ? (minY - margin) : 0;
+        maxX = std::min(maxX + margin, width - 1);
+        maxY = std::min(maxY + margin, height - 1);
+
+        unsigned int regionWidth = maxX - minX + 1;
+        unsigned int regionHeight = maxY - minY + 1;
+
+        std::cout << "  Bounding box: (" << minX << "," << minY << ") to ("
+                  << maxX << "," << maxY << ")" << std::endl;
+
+        // Create visualization image (scale up for better visibility)
+        unsigned int scale = 10;
+        cv::Mat visImage = cv::Mat::zeros(regionHeight * scale, regionWidth * scale, CV_8UC3);
+
+        // Draw all pixels in group 11
+        for (unsigned int i = 0; i < groupCount; ++i) {
+            unsigned int pixelIdx = h_sortedIndices[groupStart + i];
+            unsigned int px = pixelIdx % width;
+            unsigned int py = pixelIdx / width;
+
+            if (px >= minX && px <= maxX && py >= minY && py <= maxY) {
+                unsigned int imgX = (px - minX) * scale;
+                unsigned int imgY = (py - minY) * scale;
+                cv::rectangle(visImage,
+                            cv::Point(imgX, imgY),
+                            cv::Point(imgX + scale - 1, imgY + scale - 1),
+                            cv::Scalar(255, 255, 255), cv::FILLED);
+            }
+        }
+
+        // Draw grid lines and axis labels
+        for (unsigned int x = 0; x <= regionWidth; ++x) {
+            int imgX = x * scale;
+            cv::line(visImage, cv::Point(imgX, 0), cv::Point(imgX, regionHeight * scale - 1),
+                    cv::Scalar(50, 50, 50), 1);
+
+            // X-axis labels every 5 pixels
+            if (x % 5 == 0 && x < regionWidth) {
+                std::string label = std::to_string(minX + x);
+                cv::putText(visImage, label, cv::Point(imgX + 2, 12),
+                           cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
+            }
+        }
+        for (unsigned int y = 0; y <= regionHeight; ++y) {
+            int imgY = y * scale;
+            cv::line(visImage, cv::Point(0, imgY), cv::Point(regionWidth * scale - 1, imgY),
+                    cv::Scalar(50, 50, 50), 1);
+
+            // Y-axis labels every 5 pixels
+            if (y % 5 == 0 && y < regionHeight) {
+                std::string label = std::to_string(minY + y);
+                cv::putText(visImage, label, cv::Point(2, imgY + 12),
+                           cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
+            }
+        }
+
+        std::string filename = "debug_group11_contour_pixels.png";
+        cv::imwrite(filename, visImage);
+        std::cout << "  Saved contour pixel visualization: " << filename << std::endl;
+    }
+    // ========== END DEBUG VISUALIZATION ==========
 
     // Step 5: Launch tracing kernel (one block per group)
     dim3 blockSize(1, 1, 1); // Using single thread per block for now
