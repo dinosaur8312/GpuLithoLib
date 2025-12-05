@@ -1,0 +1,2003 @@
+=== GPU Contour Tracing Test: INTERSECTION Operation ===
+
+Using GPU device: 0
+
+=== Loading Real Test Data ===
+Subject layer: 298 polygons, 20003 vertices
+Clipper layer: 373 polygons, 18510 vertices
+
+=== Performing Intersection ===
+Prepared dual layers: global box (63922,59734,66922,62026), grid size 3000x2292
+Saved debug bitmap: debug_scanline_bitmap_0.png
+Saved debug bitmap: debug_scanline_bitmap_1.png
+
+========== DEBUG: Polygon Bounding Boxes ==========
+Subject Layer Bounding Boxes (all 298 polygons):
+  S0: (1392,521) to (1545,558)
+  S1: (1334,1029) to (1652,1110)
+  S2: (362,1362) to (394,1441)
+  S3: (574,1401) to (654,1472)
+  S4: (1099,1401) to (1180,1472)
+  S5: (270,1353) to (335,1421)
+  S6: (1360,1401) to (1444,1472)
+  S7: (1823,1396) to (1861,1419)
+  S8: (1933,1401) to (1968,1472)
+  S9: (1048,1570) to (1653,1687)
+  S10: (1349,1181) to (1655,1318)
+  S11: (1440,1912) to (1519,1997)
+  S12: (1690,1180) to (1948,1407)
+  S13: (1491,1383) to (1576,1452)
+  S14: (1627,1350) to (1704,1435)
+  S15: (1760,1389) to (1812,1423)
+  S16: (2152,1401) to (2232,1472)
+  S17: (1302,1659) to (1845,1775)
+  S18: (1373,1837) to (1595,1953)
+  S19: (2542,1281) to (2575,1574)
+  S20: (1440,2038) to (1519,2110)
+  S21: (1429,2151) to (1469,2190)
+  S22: (2610,1325) to (2691,1404)
+  S23: (1893,1698) to (1964,1737)
+  S24: (2023,1738) to (2253,1772)
+  S25: (1616,1474) to (1650,1511)
+  S26: (1660,1479) to (1683,1505)
+  S27: (1864,1433) to (1900,1474)
+  S28: (1495,1491) to (1575,1580)
+  S29: (1825,1788) to (2047,1873)
+  S30: (1532,1719) to (1856,1823)
+  S31: (2013,1416) to (2103,1483)
+  S32: (1736,1458) to (1820,1545)
+  S33: (1669,1506) to (1916,1621)
+  S34: (1634,1837) to (1798,1955)
+  S35: (1713,1911) to (1792,1998)
+  S36: (2285,1409) to (2359,1485)
+  S37: (1577,1984) to (1654,2060)
+  S38: (1935,1535) to (2572,1688)
+  S39: (1946,1485) to (1985,1524)
+  S40: (2286,1524) to (2359,1613)
+  S41: (2272,1747) to (2305,1782)
+  S42: (2409,1403) to (2499,1472)
+  S43: (2414,1514) to (2496,1597)
+  S44: (2410,1832) to (2493,1916)
+  S45: (2063,1823) to (2310,1937)
+  S46: (1811,1866) to (1848,1919)
+  S47: (1886,1862) to (1969,1951)
+  S48: (1999,1931) to (2043,1976)
+  S49: (1881,1991) to (1970,2060)
+  S50: (2055,1936) to (2081,1961)
+  S51: (2130,1896) to (2212,1984)
+  S52: (2157,2020) to (2208,2059)
+  S53: (2020,2007) to (2098,2092)
+  S54: (1870,1652) to (1903,1684)
+  S55: (1502,2148) to (1532,2188)
+  S56: (1886,2100) to (1966,2187)
+  S57: (2155,1512) to (2227,1600)
+  S58: (1813,2124) to (2048,2260)
+  S59: (1495,2198) to (1590,2241)
+  S60: (1710,2036) to (1794,2113)
+  S61: (1575,2102) to (1657,2180)
+  S62: (2256,1967) to (2295,2009)
+  S63: (1648,2168) to (1770,2242)
+  S64: (2219,2023) to (2255,2047)
+  S65: (2167,2095) to (2250,2187)
+  S66: (2083,2035) to (2342,2261)
+  S67: (2549,1843) to (2622,1929)
+  S68: (2340,1919) to (2378,1956)
+  S69: (2326,1970) to (2360,2039)
+  S70: (2408,1957) to (2495,2027)
+  S71: (2413,2068) to (2492,2150)
+  S72: (1802,2117) to (1844,2181)
+  S73: (2358,2183) to (2462,2222)
+  S74: (2502,2205) to (2582,2291)
+  S75: (2017,1524) to (2099,1612)
+  S76: (2610,1444) to (2692,1526)
+  S77: (2681,1828) to (2754,1918)
+  S78: (2679,1957) to (2755,2032)
+  S79: (2546,1970) to (2626,2040)
+  S80: (2670,2065) to (2701,2110)
+  S81: (2735,2065) to (2767,2110)
+  S82: (2545,2084) to (2628,2156)
+  S83: (2675,2127) to (2702,2159)
+  S84: (2623,2204) to (2703,2291)
+  S85: (2731,2139) to (2778,2218)
+  S86: (208,1528) to (233,1604)
+  S87: (238,2033) to (273,2068)
+  S88: (1308,1984) to (1387,2061)
+  S89: (312,1518) to (389,1613)
+  S90: (1233,2064) to (1271,2102)
+  S91: (578,1513) to (651,1598)
+  S92: (1305,2103) to (1388,2179)
+  S93: (1132,1718) to (1168,1757)
+  S94: (285,2058) to (316,2151)
+  S95: (1122,2194) to (1202,2240)
+  S96: (1095,1793) to (1341,1942)
+  S97: (1225,2195) to (1316,2243)
+  S98: (1232,1410) to (1309,1485)
+  S99: (1360,2208) to (1457,2245)
+  S100: (1364,1512) to (1439,1599)
+  S101: (445,1521) to (518,1615)
+  S102: (1234,1524) to (1307,1612)
+  S103: (235,1610) to (1022,1692)
+  S104: (1174,1872) to (1260,1960)
+  S105: (709,1524) to (783,1612)
+  S106: (836,1402) to (918,1472)
+  S107: (840,1514) to (915,1597)
+  S108: (436,1414) to (525,1483)
+  S109: (969,1414) to (1047,1484)
+  S110: (1362,1911) to (1397,1951)
+  S111: (970,1525) to (1045,1609)
+  S112: (897,1745) to (995,1821)
+  S113: (1102,1512) to (1175,1600)
+  S114: (743,1792) to (781,1828)
+  S115: (1029,1702) to (1072,1875)
+  S116: (335,1972) to (572,2037)
+  S117: (326,1793) to (713,1947)
+  S118: (367,2047) to (447,2140)
+  S119: (433,2163) to (477,2211)
+  S120: (579,1925) to (816,2171)
+  S121: (653,2001) to (738,2095)
+  S122: (512,2073) to (593,2165)
+  S123: (498,2166) to (667,2242)
+  S124: (823,1706) to (986,2027)
+  S125: (900,1865) to (993,1942)
+  S126: (1090,1935) to (1133,2000)
+  S127: (873,2062) to (908,2096)
+  S128: (957,2039) to (1002,2138)
+  S129: (1022,1936) to (1068,1999)
+  S130: (1038,2014) to (1110,2041)
+  S131: (149,1826) to (327,1982)
+  S132: (1033,2097) to (1121,2180)
+  S133: (160,1901) to (245,1986)
+  S134: (963,2161) to (1009,2234)
+  S135: (176,2022) to (210,2063)
+  S136: (1132,1993) to (1258,2062)
+  S137: (1035,2211) to (1078,2255)
+  S138: (707,1410) to (784,1484)
+  S139: (235,1444) to (363,1518)
+  S140: (1203,2101) to (1226,2174)
+  S141: (1099,1285) to (1181,1359)
+  S142: (179,1256) to (260,1349)
+  S143: (1306,1115) to (1339,1200)
+  S144: (1284,1223) to (1332,1301)
+  S145: (1228,1283) to (1255,1315)
+  S146: (1087,527) to (1122,573)
+  S147: (1223,1333) to (1255,1377)
+  S148: (1154,527) to (1190,574)
+  S149: (1286,1328) to (1318,1375)
+  S150: (1233,518) to (1311,602)
+  S151: (1361,1278) to (1440,1361)
+  S152: (1101,607) to (1177,682)
+  S153: (1100,723) to (1178,798)
+  S154: (781,1115) to (815,1200)
+  S155: (759,1223) to (807,1303)
+  S156: (836,1279) to (915,1361)
+  S157: (1364,601) to (1439,684)
+  S158: (1057,1152) to (1135,1236)
+  S159: (315,756) to (389,829)
+  S160: (977,1096) to (1010,1203)
+  S161: (824,1201) to (965,1239)
+  S162: (985,1220) to (1017,1255)
+  S163: (971,1293) to (1045,1374)
+  S164: (762,1331) to (795,1377)
+  S165: (181,785) to (259,858)
+  S166: (1232,642) to (1310,713)
+  S167: (180,898) to (260,980)
+  S168: (1364,724) to (1440,797)
+  S169: (314,869) to (389,952)
+  S170: (1232,755) to (1309,828)
+  S171: (1100,840) to (1178,910)
+  S172: (1023,982) to (1054,1034)
+  S173: (1102,951) to (1176,1035)
+  S174: (1024,1061) to (1310,1104)
+  S175: (1234,870) to (1308,948)
+  S176: (1225,982) to (1258,1028)
+  S177: (1279,979) to (1319,1033)
+  S178: (1365,951) to (1439,1035)
+  S179: (185,547) to (257,631)
+  S180: (1365,839) to (1441,911)
+  S181: (315,514) to (388,605)
+  S182: (461,1218) to (495,1260)
+  S183: (532,1149) to (609,1237)
+  S184: (362,1220) to (441,1323)
+  S185: (440,1295) to (520,1373)
+  S186: (651,1152) to (732,1237)
+  S187: (632,529) to (664,573)
+  S188: (704,1283) to (730,1316)
+  S189: (566,529) to (599,573)
+  S190: (446,517) to (520,602)
+  S191: (444,642) to (520,713)
+  S192: (576,607) to (652,682)
+  S193: (575,1285) to (655,1359)
+  S194: (707,643) to (784,712)
+  S195: (575,723) to (653,798)
+  S196: (700,1333) to (730,1378)
+  S197: (444,757) to (522,827)
+  S198: (312,644) to (391,714)
+  S199: (339,983) to (530,1040)
+  S200: (183,670) to (258,743)
+  S201: (575,840) to (652,911)
+  S202: (447,868) to (521,953)
+  S203: (576,951) to (652,1034)
+  S204: (330,1070) to (445,1142)
+  S205: (459,1061) to (784,1141)
+  S206: (708,518) to (783,601)
+  S207: (698,982) to (734,1029)
+  S208: (839,607) to (915,682)
+  S209: (839,723) to (916,798)
+  S210: (828,528) to (861,574)
+  S211: (893,528) to (926,573)
+  S212: (971,518) to (1045,601)
+  S213: (969,643) to (1046,712)
+  S214: (969,755) to (1046,828)
+  S215: (707,755) to (784,828)
+  S216: (838,840) to (916,910)
+  S217: (708,870) to (783,949)
+  S218: (759,979) to (794,1028)
+  S219: (971,870) to (1044,947)
+  S220: (840,951) to (914,1036)
+  S221: (808,1057) to (1004,1110)
+  S222: (288,993) to (328,1030)
+  S223: (263,1055) to (320,1077)
+  S224: (209,1088) to (265,1180)
+  S225: (961,980) to (993,1031)
+  S226: (290,1150) to (372,1238)
+  S227: (1177,1152) to (1257,1237)
+  S228: (303,1273) to (339,1324)
+  S229: (2019,1292) to (2098,1374)
+  S230: (1496,950) to (1574,1037)
+  S231: (2412,725) to (2497,796)
+  S232: (2018,517) to (2097,601)
+  S233: (2285,755) to (2360,829)
+  S234: (1625,756) to (1708,829)
+  S235: (2581,567) to (2767,678)
+  S236: (1496,1254) to (1571,1343)
+  S237: (1771,776) to (1859,852)
+  S238: (2413,600) to (2496,683)
+  S239: (1626,870) to (1705,950)
+  S240: (2611,644) to (2691,730)
+  S241: (1654,974) to (1932,1054)
+  S242: (2607,771) to (2694,840)
+  S243: (1774,890) to (1854,979)
+  S244: (1773,1254) to (1855,1348)
+  S245: (2286,870) to (2359,949)
+  S246: (1644,1106) to (1963,1170)
+  S247: (2414,952) to (2495,1034)
+  S248: (1951,604) to (1986,639)
+  S249: (2026,1063) to (2361,1195)
+  S250: (2413,839) to (2498,910)
+  S251: (2153,607) to (2229,682)
+  S252: (2541,604) to (2574,1012)
+  S253: (2358,1115) to (2391,1200)
+  S254: (2546,1115) to (2688,1165)
+  S255: (2581,1194) to (2783,1275)
+  S256: (2208,528) to (2243,573)
+  S257: (2229,1152) to (2308,1237)
+  S258: (2338,986) to (2369,1026)
+  S259: (2401,1201) to (2562,1263)
+  S260: (2014,643) to (2100,712)
+  S261: (2278,1281) to (2308,1317)
+  S262: (2611,882) to (2692,963)
+  S263: (2339,1333) to (2369,1374)
+  S264: (1858,634) to (1915,681)
+  S265: (2335,1222) to (2385,1306)
+  S266: (2588,1014) to (2663,1045)
+  S267: (2153,723) to (2230,797)
+  S268: (2411,1280) to (2496,1359)
+  S269: (2385,1034) to (2572,1112)
+  S270: (1924,529) to (1949,604)
+  S271: (2276,1333) to (2307,1377)
+  S272: (1856,699) to (1959,841)
+  S273: (1936,653) to (1965,724)
+  S274: (1872,853) to (1922,893)
+  S275: (1624,517) to (1706,603)
+  S276: (1921,893) to (1952,955)
+  S277: (2143,526) to (2176,570)
+  S278: (2017,756) to (2100,828)
+  S279: (2152,840) to (2230,911)
+  S280: (1497,603) to (1571,684)
+  S281: (1953,970) to (2106,1032)
+  S282: (1623,643) to (1710,715)
+  S283: (2286,516) to (2363,603)
+  S284: (1773,516) to (1854,610)
+  S285: (2019,867) to (2098,953)
+  S286: (1954,1076) to (1983,1105)
+  S287: (1751,636) to (1794,677)
+  S288: (2108,1151) to (2187,1237)
+  S289: (2274,982) to (2313,1032)
+  S290: (1964,1221) to (2070,1259)
+  S291: (1750,704) to (1788,742)
+  S292: (2153,952) to (2229,1033)
+  S293: (1496,723) to (1571,797)
+  S294: (2449,522) to (2563,584)
+  S295: (1494,840) to (1572,911)
+  S296: (2151,1285) to (2233,1358)
+  S297: (2285,642) to (2360,713)
+
+Clipper Layer Bounding Boxes (all 373 polygons):
+  C0: (1601,1107) to (1677,1182)
+  C1: (335,942) to (1099,1522)
+  C2: (1864,1101) to (1939,1184)
+  C3: (2451,1104) to (2486,1139)
+  C4: (2653,1107) to (2729,1182)
+  C5: (2358,1134) to (2415,1181)
+  C6: (1997,1103) to (2071,1184)
+  C7: (2251,1136) to (2294,1177)
+  C8: (2913,1100) to (2996,1183)
+  C9: (735,2110) to (1522,2192)
+  C10: (1477,1596) to (1510,1703)
+  C11: (1485,1720) to (1517,1755)
+  C12: (1471,1793) to (1545,1874)
+  C13: (1470,2025) to (1545,2109)
+  C14: (1469,1914) to (1547,1984)
+  C15: (1494,148) to (1521,240)
+  C16: (1464,258) to (1502,297)
+  C17: (1465,335) to (1553,414)
+  C18: (1467,457) to (1553,527)
+  C19: (1264,254) to (1631,872)
+  C20: (1468,684) to (1551,764)
+  C21: (1076,1107) to (1152,1182)
+  C22: (1392,941) to (1622,1012)
+  C23: (1339,1107) to (1415,1182)
+  C24: (1471,1018) to (1545,1101)
+  C25: (1469,1143) to (1546,1212)
+  C26: (1469,1255) to (1546,1328)
+  C27: (1471,1370) to (1544,1447)
+  C28: (1308,1557) to (1504,1610)
+  C29: (1467,572) to (1553,641)
+  C30: (13,1133) to (58,1177)
+  C31: (241,1004) to (280,1485)
+  C32: (2154,1474) to (2432,1554)
+  C33: (2144,1606) to (2463,1670)
+  C34: (1557,1652) to (1635,1736)
+  C35: (1677,1652) to (1757,1737)
+  C36: (2608,1651) to (2687,1737)
+  C37: (1849,1681) to (2155,1818)
+  C38: (2190,1680) to (2448,1907)
+  C39: (1802,2159) to (2345,2275)
+  C40: (2729,1652) to (2808,1737)
+  C41: (2236,1958) to (2320,2045)
+  C42: (2169,2006) to (2416,2121)
+  C43: (2652,1901) to (2732,1972)
+  C44: (2513,1916) to (2603,1983)
+  C45: (2446,1985) to (2485,2024)
+  C46: (2655,2012) to (2727,2100)
+  C47: (2433,1901) to (2468,1972)
+  C48: (2370,2152) to (2403,2184)
+  C49: (2393,2198) to (2464,2237)
+  C50: (2273,1754) to (2355,1848)
+  C51: (2260,1889) to (2312,1923)
+  C52: (2651,1785) to (2733,1858)
+  C53: (2517,2024) to (2599,2112)
+  C54: (2523,2238) to (2753,2272)
+  C55: (2464,1721) to (2570,1759)
+  C56: (2519,1792) to (2598,1874)
+  C57: (2364,1933) to (2400,1974)
+  C58: (2778,1781) to (2808,1817)
+  C59: (2839,1833) to (2869,1874)
+  C60: (2323,1896) to (2361,1919)
+  C61: (2835,1722) to (2885,1806)
+  C62: (2786,2024) to (2859,2113)
+  C63: (2776,1833) to (2807,1877)
+  C64: (2911,1780) to (2996,1859)
+  C65: (2909,1903) to (2999,1972)
+  C66: (2785,1909) to (2859,1985)
+  C67: (2914,2014) to (2996,2097)
+  C68: (1723,1833) to (1755,1877)
+  C69: (1734,2024) to (1807,2112)
+  C70: (2160,1979) to (2183,2005)
+  C71: (1599,1785) to (1681,1859)
+  C72: (2116,1974) to (2150,2011)
+  C73: (1548,2070) to (2153,2187)
+  C74: (1995,1991) to (2075,2080)
+  C75: (1784,1723) to (1832,1801)
+  C76: (1861,1778) to (1940,1861)
+  C77: (1786,1828) to (1818,1875)
+  C78: (1996,1754) to (2071,1843)
+  C79: (1860,1901) to (1944,1972)
+  C80: (1632,2218) to (1668,2257)
+  C81: (1732,1910) to (1809,1985)
+  C82: (1602,2012) to (1675,2100)
+  C83: (1599,1901) to (1680,1972)
+  C84: (2127,1850) to (2204,1935)
+  C85: (1728,1783) to (1755,1815)
+  C86: (1991,1883) to (2076,1952)
+  C87: (1864,2012) to (1939,2099)
+  C88: (1834,1529) to (2152,1610)
+  C89: (2126,1370) to (2205,1450)
+  C90: (2125,1256) to (2208,1329)
+  C91: (1994,1340) to (2072,1411)
+  C92: (1806,1615) to (1839,1700)
+  C93: (1602,1451) to (1676,1535)
+  C94: (1732,1142) to (1810,1213)
+  C95: (1865,1339) to (1941,1411)
+  C96: (1523,1482) to (1554,1534)
+  C97: (1732,1255) to (1809,1328)
+  C98: (1996,1450) to (2074,1537)
+  C99: (1524,1561) to (1810,1604)
+  C100: (1600,1223) to (1678,1298)
+  C101: (1864,1224) to (1940,1297)
+  C102: (1865,1451) to (1939,1535)
+  C103: (1725,1482) to (1758,1528)
+  C104: (1779,1479) to (1819,1533)
+  C105: (1600,1340) to (1678,1410)
+  C106: (1996,1223) to (2071,1297)
+  C107: (1734,1370) to (1808,1448)
+  C108: (2123,1143) to (2210,1215)
+  C109: (2913,1339) to (2998,1410)
+  C110: (2785,1255) to (2860,1329)
+  C111: (2526,1563) to (2861,1695)
+  C112: (2653,1452) to (2729,1533)
+  C113: (2250,1204) to (2288,1242)
+  C114: (2912,1225) to (2997,1296)
+  C115: (2274,1390) to (2354,1479)
+  C116: (2774,1482) to (2813,1532)
+  C117: (2514,1143) to (2600,1212)
+  C118: (2454,1576) to (2483,1605)
+  C119: (2653,1223) to (2730,1297)
+  C120: (2785,1142) to (2860,1213)
+  C121: (2356,1199) to (2459,1341)
+  C122: (2858,1615) to (2891,1700)
+  C123: (2372,1353) to (2422,1393)
+  C124: (2436,1153) to (2465,1224)
+  C125: (2421,1393) to (2452,1455)
+  C126: (2786,1370) to (2859,1449)
+  C127: (2517,1256) to (2600,1328)
+  C128: (2271,1276) to (2359,1352)
+  C129: (2652,1340) to (2730,1411)
+  C130: (2519,1367) to (2598,1453)
+  C131: (2453,1470) to (2606,1532)
+  C132: (2838,1486) to (2869,1526)
+  C133: (2914,1452) to (2995,1534)
+  C134: (812,2018) to (889,2113)
+  C135: (1,1958) to (85,2043)
+  C136: (1200,1833) to (1230,1878)
+  C137: (936,1914) to (1025,1983)
+  C138: (862,1862) to (894,1941)
+  C139: (637,2223) to (1216,2275)
+  C140: (1074,1901) to (1154,1972)
+  C141: (1207,1910) to (1284,1984)
+  C142: (1078,2013) to (1151,2098)
+  C143: (945,2021) to (1018,2115)
+  C144: (680,1398) to (760,1480)
+  C145: (1281,1615) to (1315,1700)
+  C146: (1259,1723) to (1307,1803)
+  C147: (1324,1701) to (1465,1739)
+  C148: (1336,1779) to (1415,1861)
+  C149: (1209,2024) to (1283,2112)
+  C150: (683,1170) to (758,1243)
+  C151: (510,1481) to (550,1530)
+  C152: (600,1365) to (649,1416)
+  C153: (541,1371) to (579,1415)
+  C154: (1262,1831) to (1295,1877)
+  C155: (576,1448) to (614,1521)
+  C156: (1336,1902) to (1418,1972)
+  C157: (1340,2014) to (1415,2097)
+  C158: (549,1143) to (631,1212)
+  C159: (555,1252) to (624,1340)
+  C160: (1151,1652) to (1232,1737)
+  C161: (174,1514) to (258,1604)
+  C162: (284,1509) to (333,1725)
+  C163: (413,1500) to (450,1536)
+  C164: (452,1564) to (545,1645)
+  C165: (376,1542) to (420,1700)
+  C166: (433,1705) to (521,1732)
+  C167: (36,1756) to (124,1845)
+  C168: (23,1889) to (125,1923)
+  C169: (174,1630) to (280,2058)
+  C170: (410,1792) to (504,1873)
+  C171: (408,1915) to (505,1984)
+  C172: (413,2025) to (499,2109)
+  C173: (193,2085) to (287,2141)
+  C174: (336,1716) to (705,2186)
+  C175: (788,1493) to (828,1530)
+  C176: (632,1520) to (749,1563)
+  C177: (546,1547) to (621,1719)
+  C178: (709,1588) to (765,1680)
+  C179: (533,1741) to (568,1777)
+  C180: (679,1756) to (760,1849)
+  C181: (803,1773) to (839,1824)
+  C182: (814,1369) to (889,1452)
+  C183: (763,1555) to (820,1577)
+  C184: (681,1285) to (759,1358)
+  C185: (790,1650) to (872,1738)
+  C186: (1032,1649) to (1109,1737)
+  C187: (545,1678) to (705,1943)
+  C188: (812,1144) to (891,1214)
+  C189: (944,1142) to (1020,1213)
+  C190: (1075,1223) to (1153,1298)
+  C191: (770,1853) to (835,1921)
+  C192: (815,1256) to (889,1329)
+  C193: (944,1257) to (1022,1327)
+  C194: (839,1483) to (1030,1540)
+  C195: (830,1570) to (945,1642)
+  C196: (1075,1340) to (1152,1411)
+  C197: (947,1368) to (1021,1453)
+  C198: (1076,1451) to (1152,1534)
+  C199: (959,1561) to (1284,1641)
+  C200: (1208,1370) to (1283,1449)
+  C201: (1198,1482) to (1234,1529)
+  C202: (961,1718) to (995,1760)
+  C203: (616,1864) to (760,1924)
+  C204: (1207,1143) to (1284,1212)
+  C205: (580,1943) to (704,2018)
+  C206: (862,1720) to (941,1823)
+  C207: (1339,1223) to (1416,1298)
+  C208: (1207,1255) to (1284,1328)
+  C209: (1338,1340) to (1416,1410)
+  C210: (552,2020) to (629,2112)
+  C211: (940,1795) to (1020,1873)
+  C212: (1259,1479) to (1294,1528)
+  C213: (1340,1451) to (1414,1536)
+  C214: (735,1944) to (863,2018)
+  C215: (1075,1785) to (1155,1859)
+  C216: (1461,1480) to (1493,1531)
+  C217: (708,2028) to (733,2104)
+  C218: (16,1204) to (55,1242)
+  C219: (36,1392) to (123,1478)
+  C220: (409,1152) to (501,1220)
+  C221: (32,1278) to (128,1351)
+  C222: (1204,1783) to (1230,1816)
+  C223: (408,1265) to (500,1338)
+  C224: (410,1380) to (503,1456)
+  C225: (946,1017) to (1020,1102)
+  C226: (962,155) to (1213,208)
+  C227: (552,1014) to (625,1106)
+  C228: (972,259) to (1267,421)
+  C229: (943,363) to (1024,441)
+  C230: (1091,334) to (1173,423)
+  C231: (1191,419) to (1239,461)
+  C232: (1088,461) to (1177,536)
+  C233: (943,483) to (1027,556)
+  C234: (942,598) to (1029,670)
+  C235: (40,332) to (120,423)
+  C236: (1176,474) to (1273,613)
+  C237: (213,3) to (448,133)
+  C238: (1068,573) to (1106,609)
+  C239: (282,277) to (367,364)
+  C240: (1131,941) to (1361,1012)
+  C241: (280,401) to (365,474)
+  C242: (1328,1028) to (1361,1074)
+  C243: (35,459) to (125,537)
+  C244: (1175,632) to (1232,678)
+  C245: (1069,635) to (1110,678)
+  C246: (16,567) to (63,609)
+  C247: (942,710) to (1025,795)
+  C248: (1393,1028) to (1426,1073)
+  C249: (18,636) to (60,678)
+  C250: (1282,51) to (1318,90)
+  C251: (1352,165) to (1443,250)
+  C252: (482,1) to (719,133)
+  C253: (1276,108) to (1436,323)
+  C254: (417,363) to (498,441)
+  C255: (1240,711) to (1268,785)
+  C256: (279,515) to (366,589)
+  C257: (1091,703) to (1171,796)
+  C258: (117,597) to (162,646)
+  C259: (1342,79) to (1494,132)
+  C260: (436,155) to (740,208)
+  C261: (685,1047) to (757,1131)
+  C262: (448,259) to (698,318)
+  C263: (809,629) to (891,712)
+  C264: (703,856) to (849,920)
+  C265: (1336,364) to (1414,443)
+  C266: (809,277) to (893,363)
+  C267: (1253,590) to (1282,659)
+  C268: (566,332) to (646,423)
+  C269: (1331,600) to (1417,669)
+  C270: (806,400) to (891,474)
+  C271: (542,567) to (590,610)
+  C272: (545,636) to (584,678)
+  C273: (682,429) to (707,454)
+  C274: (1268,675) to (1306,711)
+  C275: (417,482) to (501,556)
+  C276: (1336,711) to (1415,795)
+  C277: (415,597) to (503,672)
+  C278: (562,457) to (651,536)
+  C279: (338,203) to (971,869)
+  C280: (805,516) to (892,589)
+  C281: (643,597) to (688,646)
+  C282: (283,629) to (365,712)
+  C283: (38,704) to (121,795)
+  C284: (35,1019) to (123,1106)
+  C285: (196,867) to (258,979)
+  C286: (236,746) to (337,790)
+  C287: (301,869) to (335,903)
+  C288: (282,918) to (333,980)
+  C289: (412,1028) to (498,1109)
+  C290: (1334,483) to (1416,556)
+  C291: (815,1014) to (888,1105)
+  C292: (762,745) to (861,789)
+  C293: (739,2) to (974,133)
+  C294: (862,789) to (1245,869)
+  C295: (1066,1029) to (1099,1073)
+  C296: (415,709) to (500,795)
+  C297: (564,704) to (648,796)
+  C298: (1208,1018) to (1283,1101)
+  C299: (1132,1029) to (1164,1073)
+  C300: (2192,358) to (2286,433)
+  C301: (1590,177) to (1623,211)
+  C302: (2723,518) to (2814,588)
+  C303: (1643,205) to (1696,312)
+  C304: (2190,594) to (2290,661)
+  C305: (1657,942) to (1891,1024)
+  C306: (2751,85) to (2795,172)
+  C307: (1654,1027) to (1690,1074)
+  C308: (2643,1026) to (2676,1070)
+  C309: (1783,65) to (1975,99)
+  C310: (2834,62) to (2921,150)
+  C311: (1811,134) to (1901,218)
+  C312: (1892,1021) to (2045,1058)
+  C313: (1736,92) to (1787,279)
+  C314: (1587,1027) to (1622,1073)
+  C315: (1925,223) to (1966,258)
+  C316: (2759,260) to (2887,793)
+  C317: (1798,366) to (1894,442)
+  C318: (2192,707) to (2288,785)
+  C319: (1722,279) to (1968,872)
+  C320: (1733,1018) to (1811,1102)
+  C321: (1593,883) to (1648,918)
+  C322: (2379,92) to (2418,139)
+  C323: (2709,941) to (2941,1023)
+  C324: (1985,363) to (2054,898)
+  C325: (2380,173) to (2461,262)
+  C326: (2641,292) to (2676,396)
+  C327: (1798,487) to (1895,555)
+  C328: (1799,715) to (1893,794)
+  C329: (2482,55) to (2529,90)
+  C330: (2718,282) to (2813,360)
+  C331: (1659,817) to (1707,894)
+  C332: (2459,112) to (2507,157)
+  C333: (2046,943) to (2428,1024)
+  C334: (2026,50) to (2061,92)
+  C335: (2542,119) to (2626,207)
+  C336: (2719,405) to (2815,473)
+  C337: (1984,127) to (2066,213)
+  C338: (2537,259) to (2631,286)
+  C339: (2708,1028) to (2743,1073)
+  C340: (1797,603) to (1896,669)
+  C341: (2370,273) to (2528,338)
+  C342: (2189,479) to (2290,546)
+  C343: (1911,828) to (2099,951)
+  C344: (2423,388) to (2491,427)
+  C345: (2297,269) to (2348,326)
+  C346: (2246,47) to (2331,134)
+  C347: (2426,448) to (2478,859)
+  C348: (2518,1017) to (2597,1101)
+  C349: (2169,9) to (2203,87)
+  C350: (2381,828) to (2417,903)
+  C351: (2088,59) to (2136,146)
+  C352: (2588,479) to (2673,559)
+  C353: (2124,1017) to (2206,1103)
+  C354: (2168,99) to (2202,147)
+  C355: (2585,602) to (2675,671)
+  C356: (2722,632) to (2812,711)
+  C357: (2116,178) to (2198,261)
+  C358: (2588,714) to (2676,795)
+  C359: (2273,1016) to (2354,1110)
+  C360: (1963,263) to (2115,339)
+  C361: (2446,940) to (2675,1014)
+  C362: (2118,345) to (2363,863)
+  C363: (2140,300) to (2174,340)
+  C364: (2514,396) to (2752,872)
+  C365: (2424,1029) to (2449,1104)
+  C366: (2235,177) to (2274,221)
+  C367: (2786,1016) to (2863,1103)
+  C368: (2302,173) to (2330,218)
+  C369: (2631,58) to (2709,195)
+  C370: (1642,88) to (1692,182)
+  C371: (2222,268) to (2279,321)
+  C372: (2651,217) to (2698,268)
+========== END BOUNDING BOX DEBUG ==========
+
+
+========== DEBUG: Checking bitmap for pair (subject=195, clipper=297) ==========
+
+========== Creating cropped clipper bitmap visualization ==========
+Saved cropped clipper bitmap to: clipper_bitmap_cropped.png
+  Cropped to x ∈ [0, 600], full height
+  White background (255), clipper polygons in gray [127-255]
+  Gray intensity = 127 + (clipper_id / 373 * 128)
+========== END CLIPPER BITMAP VISUALIZATION ==========
+
+
+========== DEBUG: Pixel values at x=600 (y%10==0) ==========
+Format: (x, y): overlay_value=0xHEX, subject_value=0xHEX, clipper_value=0xHEX [decoded IDs]
+  (600, 0): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 10): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 20): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 30): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 40): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 50): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 60): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 70): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 80): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 90): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 100): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 110): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 120): overlay=0xfd0000, subject=0x0, clipper=0xfd [Overlay: S=none, C=252] [Subject bitmap: none] [Clipper bitmap: C252]
+  (600, 130): overlay=0xfd0000, subject=0x0, clipper=0xfd [Overlay: S=none, C=252] [Subject bitmap: none] [Clipper bitmap: C252]
+  (600, 140): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 150): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 160): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 170): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 180): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 190): overlay=0x1050000, subject=0x0, clipper=0x105 [Overlay: S=none, C=260] [Subject bitmap: none] [Clipper bitmap: C260]
+  (600, 200): overlay=0x1050000, subject=0x0, clipper=0x105 [Overlay: S=none, C=260] [Subject bitmap: none] [Clipper bitmap: C260]
+  (600, 210): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 220): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 230): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 240): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 250): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 260): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 270): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 280): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 290): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 300): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 310): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 320): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 330): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 340): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 350): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 360): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 370): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 380): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 390): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 400): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 410): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 420): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 430): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 440): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 450): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 460): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 470): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 480): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 490): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 500): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 510): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 520): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 530): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 540): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 550): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 560): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 570): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 580): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 590): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 600): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 610): overlay=0xc1, subject=0xc1, clipper=0x0 [Overlay: S=192, C=none] [Subject bitmap: S192] [Clipper bitmap: none]
+  (600, 620): overlay=0xc1, subject=0xc1, clipper=0x0 [Overlay: S=192, C=none] [Subject bitmap: S192] [Clipper bitmap: none]
+  (600, 630): overlay=0xc1, subject=0xc1, clipper=0x0 [Overlay: S=192, C=none] [Subject bitmap: S192] [Clipper bitmap: none]
+  (600, 640): overlay=0xc1, subject=0xc1, clipper=0x0 [Overlay: S=192, C=none] [Subject bitmap: S192] [Clipper bitmap: none]
+  (600, 650): overlay=0xc1, subject=0xc1, clipper=0x0 [Overlay: S=192, C=none] [Subject bitmap: S192] [Clipper bitmap: none]
+  (600, 660): overlay=0xc1, subject=0xc1, clipper=0x0 [Overlay: S=192, C=none] [Subject bitmap: S192] [Clipper bitmap: none]
+  (600, 670): overlay=0xc1, subject=0xc1, clipper=0x0 [Overlay: S=192, C=none] [Subject bitmap: S192] [Clipper bitmap: none]
+  (600, 680): overlay=0xc1, subject=0xc1, clipper=0x0 [Overlay: S=192, C=none] [Subject bitmap: S192] [Clipper bitmap: none]
+  (600, 690): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 700): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 710): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 720): overlay=0x1180000, subject=0x0, clipper=0x118 [Overlay: S=none, C=279] [Subject bitmap: none] [Clipper bitmap: C279]
+  (600, 730): overlay=0x11800c4, subject=0xc4, clipper=0x118 [Overlay: S=195, C=279] [Subject bitmap: S195] [Clipper bitmap: C279]
+  (600, 740): overlay=0x11800c4, subject=0xc4, clipper=0x118 [Overlay: S=195, C=279] [Subject bitmap: S195] [Clipper bitmap: C279]
+  (600, 750): overlay=0x11800c4, subject=0xc4, clipper=0x118 [Overlay: S=195, C=279] [Subject bitmap: S195] [Clipper bitmap: C279]
+  (600, 760): overlay=0x11800c4, subject=0xc4, clipper=0x118 [Overlay: S=195, C=279] [Subject bitmap: S195] [Clipper bitmap: C279]
+  (600, 770): overlay=0x11800c4, subject=0xc4, clipper=0x118 [Overlay: S=195, C=279] [Subject bitmap: S195] [Clipper bitmap: C279]
+  (600, 780): overlay=0x11800c4, subject=0xc4, clipper=0x118 [Overlay: S=195, C=279] [Subject bitmap: S195] [Clipper bitmap: C279]
+  (600, 790): overlay=0x11800c4, subject=0xc4, clipper=0x118 [Overlay: S=195, C=279] [Subject bitmap: S195] [Clipper bitmap: C279]
+  (600, 800): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 810): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 820): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 830): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 840): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 850): overlay=0x11800ca, subject=0xca, clipper=0x118 [Overlay: S=201, C=279] [Subject bitmap: S201] [Clipper bitmap: C279]
+  (600, 860): overlay=0x11800ca, subject=0xca, clipper=0x118 [Overlay: S=201, C=279] [Subject bitmap: S201] [Clipper bitmap: C279]
+  (600, 870): overlay=0xca, subject=0xca, clipper=0x0 [Overlay: S=201, C=none] [Subject bitmap: S201] [Clipper bitmap: none]
+  (600, 880): overlay=0xca, subject=0xca, clipper=0x0 [Overlay: S=201, C=none] [Subject bitmap: S201] [Clipper bitmap: none]
+  (600, 890): overlay=0xca, subject=0xca, clipper=0x0 [Overlay: S=201, C=none] [Subject bitmap: S201] [Clipper bitmap: none]
+  (600, 900): overlay=0xca, subject=0xca, clipper=0x0 [Overlay: S=201, C=none] [Subject bitmap: S201] [Clipper bitmap: none]
+  (600, 910): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 920): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 930): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 940): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 950): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 960): overlay=0x200cc, subject=0xcc, clipper=0x2 [Overlay: S=203, C=1] [Subject bitmap: S203] [Clipper bitmap: C1]
+  (600, 970): overlay=0xcc, subject=0xcc, clipper=0x0 [Overlay: S=203, C=none] [Subject bitmap: S203] [Clipper bitmap: none]
+  (600, 980): overlay=0xcc, subject=0xcc, clipper=0x0 [Overlay: S=203, C=none] [Subject bitmap: S203] [Clipper bitmap: none]
+  (600, 990): overlay=0xcc, subject=0xcc, clipper=0x0 [Overlay: S=203, C=none] [Subject bitmap: S203] [Clipper bitmap: none]
+  (600, 1000): overlay=0xcc, subject=0xcc, clipper=0x0 [Overlay: S=203, C=none] [Subject bitmap: S203] [Clipper bitmap: none]
+  (600, 1010): overlay=0xcc, subject=0xcc, clipper=0x0 [Overlay: S=203, C=none] [Subject bitmap: S203] [Clipper bitmap: none]
+  (600, 1020): overlay=0x200cc, subject=0xcc, clipper=0x2 [Overlay: S=203, C=1] [Subject bitmap: S203] [Clipper bitmap: C1]
+  (600, 1030): overlay=0x200cc, subject=0xcc, clipper=0x2 [Overlay: S=203, C=1] [Subject bitmap: S203] [Clipper bitmap: C1]
+  (600, 1040): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1050): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1060): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1070): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1080): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1090): overlay=0x200ce, subject=0xce, clipper=0x2 [Overlay: S=205, C=1] [Subject bitmap: S205] [Clipper bitmap: C1]
+  (600, 1100): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1110): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1120): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1130): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1140): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1150): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1160): overlay=0x200b8, subject=0xb8, clipper=0x2 [Overlay: S=183, C=1] [Subject bitmap: S183] [Clipper bitmap: C1]
+  (600, 1170): overlay=0x200b8, subject=0xb8, clipper=0x2 [Overlay: S=183, C=1] [Subject bitmap: S183] [Clipper bitmap: C1]
+  (600, 1180): overlay=0x200b8, subject=0xb8, clipper=0x2 [Overlay: S=183, C=1] [Subject bitmap: S183] [Clipper bitmap: C1]
+  (600, 1190): overlay=0x200b8, subject=0xb8, clipper=0x2 [Overlay: S=183, C=1] [Subject bitmap: S183] [Clipper bitmap: C1]
+  (600, 1200): overlay=0x200b8, subject=0xb8, clipper=0x2 [Overlay: S=183, C=1] [Subject bitmap: S183] [Clipper bitmap: C1]
+  (600, 1210): overlay=0x200b8, subject=0xb8, clipper=0x2 [Overlay: S=183, C=1] [Subject bitmap: S183] [Clipper bitmap: C1]
+  (600, 1220): overlay=0xb8, subject=0xb8, clipper=0x0 [Overlay: S=183, C=none] [Subject bitmap: S183] [Clipper bitmap: none]
+  (600, 1230): overlay=0xb8, subject=0xb8, clipper=0x0 [Overlay: S=183, C=none] [Subject bitmap: S183] [Clipper bitmap: none]
+  (600, 1240): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1250): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1260): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1270): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1280): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1290): overlay=0x200c2, subject=0xc2, clipper=0x2 [Overlay: S=193, C=1] [Subject bitmap: S193] [Clipper bitmap: C1]
+  (600, 1300): overlay=0x200c2, subject=0xc2, clipper=0x2 [Overlay: S=193, C=1] [Subject bitmap: S193] [Clipper bitmap: C1]
+  (600, 1310): overlay=0x200c2, subject=0xc2, clipper=0x2 [Overlay: S=193, C=1] [Subject bitmap: S193] [Clipper bitmap: C1]
+  (600, 1320): overlay=0x200c2, subject=0xc2, clipper=0x2 [Overlay: S=193, C=1] [Subject bitmap: S193] [Clipper bitmap: C1]
+  (600, 1330): overlay=0x200c2, subject=0xc2, clipper=0x2 [Overlay: S=193, C=1] [Subject bitmap: S193] [Clipper bitmap: C1]
+  (600, 1340): overlay=0xc2, subject=0xc2, clipper=0x0 [Overlay: S=193, C=none] [Subject bitmap: S193] [Clipper bitmap: none]
+  (600, 1350): overlay=0xc2, subject=0xc2, clipper=0x0 [Overlay: S=193, C=none] [Subject bitmap: S193] [Clipper bitmap: none]
+  (600, 1360): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1370): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1380): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1390): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1400): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1410): overlay=0x4, subject=0x4, clipper=0x0 [Overlay: S=3, C=none] [Subject bitmap: S3] [Clipper bitmap: none]
+  (600, 1420): overlay=0x4, subject=0x4, clipper=0x0 [Overlay: S=3, C=none] [Subject bitmap: S3] [Clipper bitmap: none]
+  (600, 1430): overlay=0x4, subject=0x4, clipper=0x0 [Overlay: S=3, C=none] [Subject bitmap: S3] [Clipper bitmap: none]
+  (600, 1440): overlay=0x4, subject=0x4, clipper=0x0 [Overlay: S=3, C=none] [Subject bitmap: S3] [Clipper bitmap: none]
+  (600, 1450): overlay=0x4, subject=0x4, clipper=0x0 [Overlay: S=3, C=none] [Subject bitmap: S3] [Clipper bitmap: none]
+  (600, 1460): overlay=0x20004, subject=0x4, clipper=0x2 [Overlay: S=3, C=1] [Subject bitmap: S3] [Clipper bitmap: C1]
+  (600, 1470): overlay=0x20004, subject=0x4, clipper=0x2 [Overlay: S=3, C=1] [Subject bitmap: S3] [Clipper bitmap: C1]
+  (600, 1480): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1490): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1500): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1510): overlay=0x20000, subject=0x0, clipper=0x2 [Overlay: S=none, C=1] [Subject bitmap: none] [Clipper bitmap: C1]
+  (600, 1520): overlay=0x2005c, subject=0x5c, clipper=0x2 [Overlay: S=91, C=1] [Subject bitmap: S91] [Clipper bitmap: C1]
+  (600, 1530): overlay=0x5c, subject=0x5c, clipper=0x0 [Overlay: S=91, C=none] [Subject bitmap: S91] [Clipper bitmap: none]
+  (600, 1540): overlay=0x5c, subject=0x5c, clipper=0x0 [Overlay: S=91, C=none] [Subject bitmap: S91] [Clipper bitmap: none]
+  (600, 1550): overlay=0x5c, subject=0x5c, clipper=0x0 [Overlay: S=91, C=none] [Subject bitmap: S91] [Clipper bitmap: none]
+  (600, 1560): overlay=0xb2005c, subject=0x5c, clipper=0xb2 [Overlay: S=91, C=177] [Subject bitmap: S91] [Clipper bitmap: C177]
+  (600, 1570): overlay=0xb2005c, subject=0x5c, clipper=0xb2 [Overlay: S=91, C=177] [Subject bitmap: S91] [Clipper bitmap: C177]
+  (600, 1580): overlay=0xb2005c, subject=0x5c, clipper=0xb2 [Overlay: S=91, C=177] [Subject bitmap: S91] [Clipper bitmap: C177]
+  (600, 1590): overlay=0xb2005c, subject=0x5c, clipper=0xb2 [Overlay: S=91, C=177] [Subject bitmap: S91] [Clipper bitmap: C177]
+  (600, 1600): overlay=0xb20000, subject=0x0, clipper=0xb2 [Overlay: S=none, C=177] [Subject bitmap: none] [Clipper bitmap: C177]
+  (600, 1610): overlay=0xb20000, subject=0x0, clipper=0xb2 [Overlay: S=none, C=177] [Subject bitmap: none] [Clipper bitmap: C177]
+  (600, 1620): overlay=0xb20000, subject=0x0, clipper=0xb2 [Overlay: S=none, C=177] [Subject bitmap: none] [Clipper bitmap: C177]
+  (600, 1630): overlay=0xb20000, subject=0x0, clipper=0xb2 [Overlay: S=none, C=177] [Subject bitmap: none] [Clipper bitmap: C177]
+  (600, 1640): overlay=0xb20000, subject=0x0, clipper=0xb2 [Overlay: S=none, C=177] [Subject bitmap: none] [Clipper bitmap: C177]
+  (600, 1650): overlay=0xb20000, subject=0x0, clipper=0xb2 [Overlay: S=none, C=177] [Subject bitmap: none] [Clipper bitmap: C177]
+  (600, 1660): overlay=0xb20068, subject=0x68, clipper=0xb2 [Overlay: S=103, C=177] [Subject bitmap: S103] [Clipper bitmap: C177]
+  (600, 1670): overlay=0xb20068, subject=0x68, clipper=0xb2 [Overlay: S=103, C=177] [Subject bitmap: S103] [Clipper bitmap: C177]
+  (600, 1680): overlay=0xb20000, subject=0x0, clipper=0xb2 [Overlay: S=none, C=177] [Subject bitmap: none] [Clipper bitmap: C177]
+  (600, 1690): overlay=0xb20000, subject=0x0, clipper=0xb2 [Overlay: S=none, C=177] [Subject bitmap: none] [Clipper bitmap: C177]
+  (600, 1700): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1710): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1720): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1730): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1740): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1750): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1760): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1770): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 1780): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 1790): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 1800): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1810): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1820): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1830): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1840): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1850): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1860): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1870): overlay=0x76, subject=0x76, clipper=0x0 [Overlay: S=117, C=none] [Subject bitmap: S117] [Clipper bitmap: none]
+  (600, 1880): overlay=0x76, subject=0x76, clipper=0x0 [Overlay: S=117, C=none] [Subject bitmap: S117] [Clipper bitmap: none]
+  (600, 1890): overlay=0x76, subject=0x76, clipper=0x0 [Overlay: S=117, C=none] [Subject bitmap: S117] [Clipper bitmap: none]
+  (600, 1900): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1910): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1920): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1930): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1940): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 1950): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 1960): overlay=0xaf0079, subject=0x79, clipper=0xaf [Overlay: S=120, C=174] [Subject bitmap: S120] [Clipper bitmap: C174]
+  (600, 1970): overlay=0xaf0079, subject=0x79, clipper=0xaf [Overlay: S=120, C=174] [Subject bitmap: S120] [Clipper bitmap: C174]
+  (600, 1980): overlay=0x79, subject=0x79, clipper=0x0 [Overlay: S=120, C=none] [Subject bitmap: S120] [Clipper bitmap: none]
+  (600, 1990): overlay=0x79, subject=0x79, clipper=0x0 [Overlay: S=120, C=none] [Subject bitmap: S120] [Clipper bitmap: none]
+  (600, 2000): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2010): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2020): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2030): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 2040): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 2050): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 2060): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 2070): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 2080): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 2090): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 2100): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 2110): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 2120): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2130): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2140): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2150): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2160): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2170): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 2180): overlay=0xaf0000, subject=0x0, clipper=0xaf [Overlay: S=none, C=174] [Subject bitmap: none] [Clipper bitmap: C174]
+  (600, 2190): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2200): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2210): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2220): overlay=0x7c, subject=0x7c, clipper=0x0 [Overlay: S=123, C=none] [Subject bitmap: S123] [Clipper bitmap: none]
+  (600, 2230): overlay=0x7c, subject=0x7c, clipper=0x0 [Overlay: S=123, C=none] [Subject bitmap: S123] [Clipper bitmap: none]
+  (600, 2240): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2250): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2260): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2270): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2280): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+  (600, 2290): overlay=0x0, subject=0x0, clipper=0x0 [Overlay: S=none, C=none] [Subject bitmap: none] [Clipper bitmap: none]
+========== END PIXEL DEBUG ==========
+
+  Looking for bitmap pixels with value: 0x12a00c4
+  (subject_id=195 [pixel=196], clipper_id=297 [pixel=298])
+  Total pixels with this pair: 0
+  ✗ NO PIXELS found with this pair in bitmap!
+  Checking for pixels with either subject=195 or clipper=297...
+  Subject 195 only (no clipper): 578 pixels
+  Clipper 297 only (no subject): 22 pixels
+  → Both polygons exist in bitmap but DON'T OVERLAP!
+========== END BITMAP DEBUG ==========
+
+
+========== DEBUG: Searching for pair (subject=195, clipper=297) ==========
+  Pixel values: subject=196, clipper=298
+  Packed value: 0x12a00c4 (decimal: 19529924)
+  Total unique pairs found: 421
+  Partial match at index 340: subject=195, clipper=279
+  ✗ NOT FOUND - This pair does not overlap in the bitmap!
+  Possible reasons:
+    1. Polygons don't actually intersect
+    2. Intersection is too small (sub-pixel)
+    3. Issue with polygon rendering to bitmap
+========== END DEBUG ==========
+
+
+========== Creating overlay bitmap visualization ==========
+Saved overlay bitmap visualization to: overlay_bitmap_rgb.png
+  Blue channel: Subject polygon ID (scaled by 298)
+  Red channel: Clipper polygon ID (scaled by 373)
+  Green channel: 255 if intersection, 0 otherwise
+========== END OVERLAY BITMAP VISUALIZATION ==========
+
+Sorted 43699 non-zero contour pixels into groups by value
+Contour pixel sorting complete:
+  Total non-zero pixels: 43699
+  Number of unique pixel value groups: 420
+Using GPU contour tracing for INTERSECTION operation
+Found 420 pixel value groups for tracing
+DEBUG Group 11: value=131231, start=1315, count=99
+  Bounding box: (1072,1148) to (1103,1240)
+  Saved contour pixel visualization: debug_group11_contour_pixels.png
+# [Group 11, Contour 0] Starting trace at (1080, 1153), targetValue=131231, startSortedIdx=1315
+contour_11_0 = [
+    (1080, 1153),  # Point 0 | sortedIdx=1315, wasVisited=0
+    (1081, 1153),  # Point 1 | sortedIdx=1316, wasVisited=0
+    (1082, 1153),  # Point 2 | sortedIdx=1317, wasVisited=0
+    (1083, 1153),  # Point 3 | sortedIdx=1318, wasVisited=0
+    (1084, 1153),  # Point 4 | sortedIdx=1319, wasVisited=0
+    (1085, 1153),  # Point 5 | sortedIdx=1320, wasVisited=0
+    (1086, 1153),  # Point 6 | sortedIdx=1321, wasVisited=0
+    (1087, 1153),  # Point 7 | sortedIdx=1322, wasVisited=0
+    (1088, 1153),  # Point 8 | sortedIdx=1323, wasVisited=0
+    (1089, 1153),  # Point 9 | sortedIdx=1324, wasVisited=0
+    (1090, 1153),  # Point 10 | sortedIdx=1325, wasVisited=0
+    (1091, 1153),  # Point 11 | sortedIdx=1326, wasVisited=0
+    (1092, 1153),  # Point 12 | sortedIdx=1327, wasVisited=0
+    (1093, 1153),  # Point 13 | sortedIdx=1328, wasVisited=0
+    (1094, 1153),  # Point 14 | sortedIdx=1329, wasVisited=0
+    (1095, 1153),  # Point 15 | sortedIdx=1330, wasVisited=0
+    (1096, 1153),  # Point 16 | sortedIdx=1331, wasVisited=0
+    (1097, 1153),  # Point 17 | sortedIdx=1332, wasVisited=0
+    (1098, 1153),  # Point 18 | sortedIdx=1333, wasVisited=0
+# Skipping already-visited pixel (1097, 1153) at direction 4
+]
+# [Group 11, Contour 0] No neighbor found, ending trace with 19 points (OPEN contour)
+
+# [Group 11, Contour 1] Starting trace at (1077, 1154), targetValue=131231, startSortedIdx=1334
+contour_11_1 = [
+    (1077, 1154),  # Point 0 | sortedIdx=1334, wasVisited=0
+    (1078, 1154),  # Point 1 | sortedIdx=1335, wasVisited=0
+    (1079, 1154),  # Point 2 | sortedIdx=1336, wasVisited=0
+# Skipping already-visited pixel (1080, 1153) at direction 7
+# Skipping already-visited pixel (1078, 1154) at direction 4
+]
+# [Group 11, Contour 1] No neighbor found, ending trace with 3 points (OPEN contour)
+
+# [Group 11, Contour 2] Starting trace at (1077, 1155), targetValue=131231, startSortedIdx=1337
+contour_11_2 = [
+    (1077, 1155),  # Point 0 | sortedIdx=1337, wasVisited=0
+# Skipping already-visited pixel (1077, 1154) at direction 6
+# Skipping already-visited pixel (1078, 1154) at direction 7
+    (1077, 1156),  # Point 1 | sortedIdx=1338, wasVisited=0
+    (1077, 1157),  # Point 2 | sortedIdx=1339, wasVisited=0
+    (1077, 1158),  # Point 3 | sortedIdx=1340, wasVisited=0
+    (1077, 1159),  # Point 4 | sortedIdx=1341, wasVisited=0
+    (1077, 1160),  # Point 5 | sortedIdx=1342, wasVisited=0
+    (1077, 1161),  # Point 6 | sortedIdx=1343, wasVisited=0
+    (1077, 1162),  # Point 7 | sortedIdx=1344, wasVisited=0
+    (1077, 1163),  # Point 8 | sortedIdx=1345, wasVisited=0
+    (1077, 1164),  # Point 9 | sortedIdx=1346, wasVisited=0
+    (1077, 1165),  # Point 10 | sortedIdx=1347, wasVisited=0
+    (1077, 1166),  # Point 11 | sortedIdx=1348, wasVisited=0
+    (1077, 1167),  # Point 12 | sortedIdx=1349, wasVisited=0
+    (1078, 1168),  # Point 13 | sortedIdx=1350, wasVisited=0
+    (1078, 1169),  # Point 14 | sortedIdx=1351, wasVisited=0
+    (1078, 1170),  # Point 15 | sortedIdx=1352, wasVisited=0
+    (1079, 1171),  # Point 16 | sortedIdx=1353, wasVisited=0
+    (1079, 1172),  # Point 17 | sortedIdx=1354, wasVisited=0
+    (1080, 1173),  # Point 18 | sortedIdx=1355, wasVisited=0
+    (1080, 1174),  # Point 19 | sortedIdx=1356, wasVisited=0
+    (1081, 1175),  # Point 20 | sortedIdx=1357, wasVisited=0
+    (1082, 1176),  # Point 21 | sortedIdx=1358, wasVisited=0
+    (1083, 1177),  # Point 22 | sortedIdx=1359, wasVisited=0
+    (1084, 1178),  # Point 23 | sortedIdx=1360, wasVisited=0
+    (1085, 1178),  # Point 24 | sortedIdx=1361, wasVisited=0
+    (1086, 1179),  # Point 25 | sortedIdx=1362, wasVisited=0
+    (1087, 1179),  # Point 26 | sortedIdx=1363, wasVisited=0
+    (1088, 1180),  # Point 27 | sortedIdx=1364, wasVisited=0
+    (1089, 1180),  # Point 28 | sortedIdx=1365, wasVisited=0
+    (1090, 1180),  # Point 29 | sortedIdx=1366, wasVisited=0
+    (1091, 1181),  # Point 30 | sortedIdx=1367, wasVisited=0
+    (1092, 1181),  # Point 31 | sortedIdx=1368, wasVisited=0
+    (1093, 1181),  # Point 32 | sortedIdx=1369, wasVisited=0
+    (1094, 1181),  # Point 33 | sortedIdx=1370, wasVisited=0
+    (1095, 1181),  # Point 34 | sortedIdx=1371, wasVisited=0
+    (1096, 1181),  # Point 35 | sortedIdx=1372, wasVisited=0
+    (1097, 1181),  # Point 36 | sortedIdx=1373, wasVisited=0
+    (1098, 1181),  # Point 37 | sortedIdx=1374, wasVisited=0
+# Skipping already-visited pixel (1097, 1181) at direction 4
+]
+# [Group 11, Contour 2] No neighbor found, ending trace with 38 points (OPEN contour)
+
+# [Group 11, Contour 3] Starting trace at (1094, 1224), targetValue=131231, startSortedIdx=1375
+contour_11_3 = [
+    (1094, 1224),  # Point 0 | sortedIdx=1375, wasVisited=0
+    (1095, 1224),  # Point 1 | sortedIdx=1376, wasVisited=0
+    (1096, 1224),  # Point 2 | sortedIdx=1377, wasVisited=0
+    (1097, 1224),  # Point 3 | sortedIdx=1378, wasVisited=0
+    (1098, 1224),  # Point 4 | sortedIdx=1379, wasVisited=0
+# Skipping already-visited pixel (1097, 1224) at direction 4
+]
+# [Group 11, Contour 3] No neighbor found, ending trace with 5 points (OPEN contour)
+
+# [Group 11, Contour 4] Starting trace at (1089, 1225), targetValue=131231, startSortedIdx=1380
+contour_11_4 = [
+    (1089, 1225),  # Point 0 | sortedIdx=1380, wasVisited=0
+    (1090, 1225),  # Point 1 | sortedIdx=1381, wasVisited=0
+    (1091, 1225),  # Point 2 | sortedIdx=1382, wasVisited=0
+    (1092, 1225),  # Point 3 | sortedIdx=1383, wasVisited=0
+    (1093, 1225),  # Point 4 | sortedIdx=1384, wasVisited=0
+# Skipping already-visited pixel (1094, 1224) at direction 7
+# Skipping already-visited pixel (1092, 1225) at direction 4
+]
+# [Group 11, Contour 4] No neighbor found, ending trace with 5 points (OPEN contour)
+
+# [Group 11, Contour 5] Starting trace at (1087, 1226), targetValue=131231, startSortedIdx=1385
+contour_11_5 = [
+    (1087, 1226),  # Point 0 | sortedIdx=1385, wasVisited=0
+    (1088, 1226),  # Point 1 | sortedIdx=1386, wasVisited=0
+# Skipping already-visited pixel (1089, 1225) at direction 7
+]
+# [Group 11, Contour 5] Closed contour with 2 points
+
+# [Group 11, Contour 6] Starting trace at (1086, 1227), targetValue=131231, startSortedIdx=1387
+contour_11_6 = [
+    (1086, 1227),  # Point 0 | sortedIdx=1387, wasVisited=0
+# Skipping already-visited pixel (1087, 1226) at direction 7
+    (1085, 1228),  # Point 1 | sortedIdx=1389, wasVisited=0
+    (1084, 1228),  # Point 2 | sortedIdx=1388, wasVisited=0
+    (1083, 1229),  # Point 3 | sortedIdx=1390, wasVisited=0
+    (1082, 1230),  # Point 4 | sortedIdx=1391, wasVisited=0
+    (1082, 1231),  # Point 5 | sortedIdx=1392, wasVisited=0
+    (1081, 1232),  # Point 6 | sortedIdx=1393, wasVisited=0
+    (1081, 1233),  # Point 7 | sortedIdx=1394, wasVisited=0
+    (1082, 1234),  # Point 8 | sortedIdx=1397, wasVisited=0
+    (1083, 1234),  # Point 9 | sortedIdx=1398, wasVisited=0
+    (1084, 1234),  # Point 10 | sortedIdx=1399, wasVisited=0
+    (1085, 1234),  # Point 11 | sortedIdx=1400, wasVisited=0
+    (1086, 1235),  # Point 12 | sortedIdx=1401, wasVisited=0
+    (1087, 1235),  # Point 13 | sortedIdx=1402, wasVisited=0
+    (1088, 1235),  # Point 14 | sortedIdx=1403, wasVisited=0
+    (1089, 1235),  # Point 15 | sortedIdx=1404, wasVisited=0
+    (1090, 1235),  # Point 16 | sortedIdx=1405, wasVisited=0
+    (1091, 1235),  # Point 17 | sortedIdx=1406, wasVisited=0
+    (1092, 1235),  # Point 18 | sortedIdx=1407, wasVisited=0
+    (1093, 1235),  # Point 19 | sortedIdx=1408, wasVisited=0
+    (1094, 1235),  # Point 20 | sortedIdx=1409, wasVisited=0
+    (1095, 1235),  # Point 21 | sortedIdx=1410, wasVisited=0
+    (1096, 1235),  # Point 22 | sortedIdx=1411, wasVisited=0
+    (1097, 1235),  # Point 23 | sortedIdx=1412, wasVisited=0
+    (1098, 1235),  # Point 24 | sortedIdx=1413, wasVisited=0
+# Skipping already-visited pixel (1097, 1235) at direction 4
+]
+# [Group 11, Contour 6] No neighbor found, ending trace with 25 points (OPEN contour)
+
+# [Group 11, Contour 7] Starting trace at (1080, 1234), targetValue=131231, startSortedIdx=1395
+contour_11_7 = [
+    (1080, 1234),  # Point 0 | sortedIdx=1395, wasVisited=0
+# Skipping already-visited pixel (1081, 1233) at direction 7
+    (1081, 1234),  # Point 1 | sortedIdx=1396, wasVisited=0
+# Skipping already-visited pixel (1081, 1233) at direction 6
+# Skipping already-visited pixel (1082, 1234) at direction 0
+]
+# [Group 11, Contour 7] Closed contour with 2 points
+
+  Group 0 Contour 0 (96 points): Subject IDs [1]: 247 | Clipper IDs [1]: 1
+  Group 1 Contour 0 (8 points): Subject IDs [1]: 4 | Clipper IDs [1]: 2
+  Group 1 Contour 1 (13 points): Subject IDs [1]: 4 | Clipper IDs [1]: 2
+  Group 1 Contour 2 (2 points): Subject IDs [1]: 4 | Clipper IDs [1]: 2
+  Group 1 Contour 3 (8 points): Subject IDs [1]: 4 | Clipper IDs [1]: 2
+  Group 1 Contour 4 (3 points): Subject IDs [1]: 4 | Clipper IDs [1]: 2
+  Group 1 Contour 5 (2 points): Subject IDs [1]: 4 | Clipper IDs [1]: 2
+  Group 1 Contour 6 (2 points): Subject IDs [1]: 4 | Clipper IDs [1]: 2
+  Group 1 Contour 7 (31 points): Subject IDs [1]: 4 | Clipper IDs [1]: 2
+  Group 1 Contour 8 (1 points): Subject IDs [1]: 4 | Clipper IDs [1]: 2
+  Group 1 Contour 9 (71 points): Subject IDs [1]: 4 | Clipper IDs [1]: 2
+  Group 2 Contour 0 (39 points): Subject IDs [1]: 92 | Clipper IDs [1]: 2
+  Group 2 Contour 1 (4 points): Subject IDs [1]: 92 | Clipper IDs [1]: 2
+  Group 3 Contour 0 (169 points): Subject IDs [1]: 107 | Clipper IDs [1]: 2
+  Group 4 Contour 0 (49 points): Subject IDs [1]: 108 | Clipper IDs [1]: 2
+  Group 4 Contour 1 (8 points): Subject IDs [1]: 108 | Clipper IDs [1]: 2
+  Group 4 Contour 2 (3 points): Subject IDs [1]: 108 | Clipper IDs [1]: 2
+  Group 4 Contour 3 (5 points): Subject IDs [1]: 108 | Clipper IDs [1]: 2
+  Group 5 Contour 0 (176 points): Subject IDs [1]: 109 | Clipper IDs [1]: 2
+  Group 6 Contour 0 (140 points): Subject IDs [1]: 110 | Clipper IDs [1]: 2
+  Group 7 Contour 0 (203 points): Subject IDs [1]: 139 | Clipper IDs [1]: 2
+  Group 8 Contour 0 (97 points): Subject IDs [1]: 140 | Clipper IDs [1]: 2
+  Group 9 Contour 0 (9 points): Subject IDs [1]: 155 | Clipper IDs [1]: 2
+  Group 9 Contour 1 (2 points): Subject IDs [1]: 155 | Clipper IDs [1]: 2
+  Group 10 Contour 0 (174 points): Subject IDs [1]: 157 | Clipper IDs [1]: 2
+  Group 11 Contour 0 (19 points): Subject IDs [1]: 159 | Clipper IDs [1]: 2
+  Group 11 Contour 1 (3 points): Subject IDs [1]: 159 | Clipper IDs [1]: 2
+  Group 11 Contour 2 (38 points): Subject IDs [1]: 159 | Clipper IDs [1]: 2
+  Group 11 Contour 3 (5 points): Subject IDs [1]: 159 | Clipper IDs [1]: 2
+  Group 11 Contour 4 (5 points): Subject IDs [1]: 159 | Clipper IDs [1]: 2
+  Group 11 Contour 5 (2 points): Subject IDs [1]: 159 | Clipper IDs [1]: 2
+  Group 11 Contour 6 (25 points): Subject IDs [1]: 159 | Clipper IDs [1]: 2
+  Group 11 Contour 7 (2 points): Subject IDs [1]: 159 | Clipper IDs [1]: 2
+  Group 12 Contour 0 (9 points): Subject IDs [1]: 161 | Clipper IDs [1]: 2
+  Group 12 Contour 1 (142 points): Subject IDs [1]: 161 | Clipper IDs [1]: 2
+  Group 13 Contour 0 (127 points): Subject IDs [1]: 162 | Clipper IDs [1]: 2
+  Group 14 Contour 0 (139 points): Subject IDs [1]: 164 | Clipper IDs [1]: 2
+  Group 14 Contour 1 (65 points): Subject IDs [1]: 164 | Clipper IDs [1]: 2
+  Group 15 Contour 0 (2 points): Subject IDs [1]: 183 | Clipper IDs [1]: 2
+  Group 15 Contour 1 (11 points): Subject IDs [1]: 183 | Clipper IDs [1]: 2
+  Group 16 Contour 0 (208 points): Subject IDs [1]: 184 | Clipper IDs [1]: 2
+  Group 17 Contour 0 (164 points): Subject IDs [1]: 186 | Clipper IDs [1]: 2
+  Group 18 Contour 0 (192 points): Subject IDs [1]: 187 | Clipper IDs [1]: 2
+  Group 19 Contour 0 (76 points): Subject IDs [1]: 189 | Clipper IDs [1]: 2
+  Group 20 Contour 0 (172 points): Subject IDs [1]: 194 | Clipper IDs [1]: 2
+  Group 21 Contour 0 (78 points): Subject IDs [1]: 197 | Clipper IDs [1]: 2
+  Group 22 Contour 0 (74 points): Subject IDs [1]: 200 | Clipper IDs [1]: 2
+  Group 23 Contour 0 (23 points): Subject IDs [1]: 203 | Clipper IDs [1]: 2
+  Group 23 Contour 1 (8 points): Subject IDs [1]: 203 | Clipper IDs [1]: 2
+  Group 24 Contour 0 (150 points): Subject IDs [1]: 204 | Clipper IDs [1]: 2
+  Group 24 Contour 1 (93 points): Subject IDs [1]: 204 | Clipper IDs [1]: 2
+  Group 25 Contour 0 (60 points): Subject IDs [1]: 205 | Clipper IDs [1]: 2
+  Group 26 Contour 0 (174 points): Subject IDs [1]: 206 | Clipper IDs [1]: 2
+  Group 26 Contour 1 (160 points): Subject IDs [1]: 206 | Clipper IDs [1]: 2
+  Group 26 Contour 2 (54 points): Subject IDs [1]: 206 | Clipper IDs [1]: 2
+  Group 27 Contour 0 (47 points): Subject IDs [1]: 208 | Clipper IDs [1]: 2
+  Group 28 Contour 0 (9 points): Subject IDs [1]: 219 | Clipper IDs [1]: 2
+  Group 28 Contour 1 (6 points): Subject IDs [1]: 219 | Clipper IDs [1]: 2
+  Group 28 Contour 2 (1 points): Subject IDs [1]: 219 | Clipper IDs [1]: 2
+  Group 29 Contour 0 (47 points): Subject IDs [1]: 220 | Clipper IDs [1]: 2
+  Group 29 Contour 1 (41 points): Subject IDs [1]: 220 | Clipper IDs [1]: 2
+  Group 30 Contour 0 (156 points): Subject IDs [1]: 221 | Clipper IDs [1]: 2
+  Group 30 Contour 1 (94 points): Subject IDs [1]: 221 | Clipper IDs [1]: 2
+  Group 31 Contour 0 (130 points): Subject IDs [1]: 222 | Clipper IDs [1]: 2
+  Group 31 Contour 1 (147 points): Subject IDs [1]: 222 | Clipper IDs [1]: 2
+  Group 31 Contour 2 (6 points): Subject IDs [1]: 222 | Clipper IDs [1]: 2
+  Group 31 Contour 3 (2 points): Subject IDs [1]: 222 | Clipper IDs [1]: 2
+  Group 32 Contour 0 (62 points): Subject IDs [1]: 226 | Clipper IDs [1]: 2
+  Group 33 Contour 0 (194 points): Subject IDs [1]: 227 | Clipper IDs [1]: 2
+  Group 34 Contour 0 (4 points): Subject IDs [1]: 229 | Clipper IDs [1]: 2
+  Group 34 Contour 1 (18 points): Subject IDs [1]: 229 | Clipper IDs [1]: 2
+  Group 34 Contour 2 (7 points): Subject IDs [1]: 229 | Clipper IDs [1]: 2
+  Group 35 Contour 0 (168 points): Subject IDs [1]: 247 | Clipper IDs [1]: 3
+  Group 36 Contour 0 (52 points): Subject IDs [1]: 270 | Clipper IDs [1]: 4
+  Group 37 Contour 0 (90 points): Subject IDs [1]: 255 | Clipper IDs [1]: 5
+  Group 38 Contour 0 (86 points): Subject IDs [1]: 254 | Clipper IDs [1]: 6
+  Group 39 Contour 0 (181 points): Subject IDs [1]: 250 | Clipper IDs [1]: 7
+  Group 40 Contour 0 (98 points): Subject IDs [1]: 250 | Clipper IDs [1]: 8
+  Group 41 Contour 0 (98 points): Subject IDs [1]: 22 | Clipper IDs [1]: 10
+  Group 42 Contour 0 (61 points): Subject IDs [1]: 56 | Clipper IDs [1]: 10
+  Group 43 Contour 0 (171 points): Subject IDs [1]: 93 | Clipper IDs [1]: 10
+  Group 44 Contour 0 (16 points): Subject IDs [1]: 121 | Clipper IDs [1]: 10
+  Group 44 Contour 1 (5 points): Subject IDs [1]: 121 | Clipper IDs [1]: 10
+  Group 44 Contour 2 (2 points): Subject IDs [1]: 121 | Clipper IDs [1]: 10
+  Group 44 Contour 3 (4 points): Subject IDs [1]: 121 | Clipper IDs [1]: 10
+  Group 44 Contour 4 (3 points): Subject IDs [1]: 121 | Clipper IDs [1]: 10
+  Group 44 Contour 5 (3 points): Subject IDs [1]: 121 | Clipper IDs [1]: 10
+  Group 44 Contour 6 (3 points): Subject IDs [1]: 121 | Clipper IDs [1]: 10
+  Group 44 Contour 7 (32 points): Subject IDs [1]: 121 | Clipper IDs [1]: 10
+  Group 45 Contour 0 (17 points): Subject IDs [1]: 129 | Clipper IDs [1]: 10
+  Group 45 Contour 1 (1 points): Subject IDs [1]: 129 | Clipper IDs [1]: 10
+  Group 46 Contour 0 (177 points): Subject IDs [1]: 133 | Clipper IDs [1]: 10
+  Group 47 Contour 0 (85 points): Subject IDs [1]: 135 | Clipper IDs [1]: 10
+  Group 48 Contour 0 (47 points): Subject IDs [1]: 141 | Clipper IDs [1]: 10
+  Group 49 Contour 0 (52 points): Subject IDs [1]: 10 | Clipper IDs [1]: 11
+  Group 49 Contour 1 (23 points): Subject IDs [1]: 10 | Clipper IDs [1]: 11
+  Group 50 Contour 0 (82 points): Subject IDs [1]: 18 | Clipper IDs [1]: 12
+  Group 51 Contour 0 (173 points): Subject IDs [1]: 19 | Clipper IDs [1]: 13
+  Group 52 Contour 0 (198 points): Subject IDs [1]: 21 | Clipper IDs [1]: 14
+  Group 53 Contour 0 (159 points): Subject IDs [1]: 12 | Clipper IDs [1]: 15
+  Group 53 Contour 1 (3 points): Subject IDs [1]: 12 | Clipper IDs [1]: 15
+  Group 53 Contour 2 (2 points): Subject IDs [1]: 12 | Clipper IDs [1]: 15
+  Group 53 Contour 3 (2 points): Subject IDs [1]: 12 | Clipper IDs [1]: 15
+  Group 53 Contour 4 (30 points): Subject IDs [1]: 12 | Clipper IDs [1]: 15
+  Group 54 Contour 0 (1 points): Subject IDs [1]: 19 | Clipper IDs [1]: 15
+  Group 55 Contour 0 (83 points): Subject IDs [1]: 1 | Clipper IDs [1]: 20
+  Group 55 Contour 1 (59 points): Subject IDs [1]: 1 | Clipper IDs [1]: 20
+  Group 55 Contour 2 (6 points): Subject IDs [1]: 1 | Clipper IDs [1]: 20
+  Group 55 Contour 3 (5 points): Subject IDs [1]: 1 | Clipper IDs [1]: 20
+  Group 56 Contour 0 (198 points): Subject IDs [1]: 158 | Clipper IDs [1]: 20
+  Group 57 Contour 0 (3 points): Subject IDs [1]: 167 | Clipper IDs [1]: 20
+  Group 57 Contour 1 (23 points): Subject IDs [1]: 167 | Clipper IDs [1]: 20
+  Group 58 Contour 0 (202 points): Subject IDs [1]: 169 | Clipper IDs [1]: 20
+  Group 59 Contour 0 (84 points): Subject IDs [1]: 171 | Clipper IDs [1]: 20
+  Group 60 Contour 0 (180 points): Subject IDs [1]: 181 | Clipper IDs [1]: 20
+  Group 61 Contour 0 (2 points): Subject IDs [1]: 276 | Clipper IDs [1]: 20
+  Group 62 Contour 0 (155 points): Subject IDs [1]: 281 | Clipper IDs [1]: 20
+  Group 63 Contour 0 (29 points): Subject IDs [1]: 283 | Clipper IDs [1]: 20
+  Group 63 Contour 1 (3 points): Subject IDs [1]: 283 | Clipper IDs [1]: 20
+  Group 63 Contour 2 (15 points): Subject IDs [1]: 283 | Clipper IDs [1]: 20
+  Group 64 Contour 0 (11 points): Subject IDs [1]: 294 | Clipper IDs [1]: 20
+  Group 65 Contour 0 (48 points): Subject IDs [1]: 296 | Clipper IDs [1]: 20
+  Group 65 Contour 1 (38 points): Subject IDs [1]: 296 | Clipper IDs [1]: 20
+  Group 66 Contour 0 (68 points): Subject IDs [1]: 294 | Clipper IDs [1]: 21
+  Group 66 Contour 1 (36 points): Subject IDs [1]: 294 | Clipper IDs [1]: 21
+  Group 66 Contour 2 (2 points): Subject IDs [1]: 294 | Clipper IDs [1]: 21
+  Group 66 Contour 3 (4 points): Subject IDs [1]: 294 | Clipper IDs [1]: 21
+  Group 66 Contour 4 (34 points): Subject IDs [1]: 294 | Clipper IDs [1]: 21
+  Group 67 Contour 0 (84 points): Subject IDs [1]: 159 | Clipper IDs [1]: 22
+  Group 68 Contour 0 (127 points): Subject IDs [1]: 179 | Clipper IDs [1]: 23
+  Group 69 Contour 0 (155 points): Subject IDs [1]: 231 | Clipper IDs [1]: 23
+  Group 70 Contour 0 (33 points): Subject IDs [1]: 2 | Clipper IDs [1]: 24
+  Group 71 Contour 0 (16 points): Subject IDs [1]: 2 | Clipper IDs [1]: 25
+  Group 71 Contour 1 (6 points): Subject IDs [1]: 2 | Clipper IDs [1]: 25
+  Group 71 Contour 2 (154 points): Subject IDs [1]: 2 | Clipper IDs [1]: 25
+  Group 72 Contour 0 (40 points): Subject IDs [1]: 231 | Clipper IDs [1]: 25
+  Group 72 Contour 1 (11 points): Subject IDs [1]: 231 | Clipper IDs [1]: 25
+  Group 72 Contour 2 (21 points): Subject IDs [1]: 231 | Clipper IDs [1]: 25
+  Group 73 Contour 0 (181 points): Subject IDs [1]: 11 | Clipper IDs [1]: 26
+  Group 74 Contour 0 (8 points): Subject IDs [1]: 11 | Clipper IDs [1]: 27
+  Group 74 Contour 1 (6 points): Subject IDs [1]: 11 | Clipper IDs [1]: 27
+  Group 74 Contour 2 (4 points): Subject IDs [1]: 11 | Clipper IDs [1]: 27
+  Group 74 Contour 3 (1 points): Subject IDs [1]: 11 | Clipper IDs [1]: 27
+  Group 74 Contour 4 (1 points): Subject IDs [1]: 11 | Clipper IDs [1]: 27
+  Group 74 Contour 5 (39 points): Subject IDs [1]: 11 | Clipper IDs [1]: 27
+  Group 74 Contour 6 (39 points): Subject IDs [1]: 11 | Clipper IDs [1]: 27
+  Group 75 Contour 0 (6 points): Subject IDs [1]: 237 | Clipper IDs [1]: 27
+  Group 75 Contour 1 (4 points): Subject IDs [1]: 237 | Clipper IDs [1]: 27
+  Group 75 Contour 2 (3 points): Subject IDs [1]: 237 | Clipper IDs [1]: 27
+  Group 75 Contour 3 (6 points): Subject IDs [1]: 237 | Clipper IDs [1]: 27
+  Group 75 Contour 4 (2 points): Subject IDs [1]: 237 | Clipper IDs [1]: 27
+  Group 75 Contour 5 (4 points): Subject IDs [1]: 237 | Clipper IDs [1]: 27
+  Group 75 Contour 6 (11 points): Subject IDs [1]: 237 | Clipper IDs [1]: 27
+  Group 75 Contour 7 (11 points): Subject IDs [1]: 237 | Clipper IDs [1]: 27
+  Group 75 Contour 8 (54 points): Subject IDs [1]: 237 | Clipper IDs [1]: 27
+  Group 75 Contour 9 (1 points): Subject IDs [1]: 237 | Clipper IDs [1]: 27
+  Group 76 Contour 0 (192 points): Subject IDs [1]: 14 | Clipper IDs [1]: 28
+  Group 77 Contour 0 (63 points): Subject IDs [1]: 10 | Clipper IDs [1]: 29
+  Group 77 Contour 1 (2 points): Subject IDs [1]: 10 | Clipper IDs [1]: 29
+  Group 77 Contour 2 (3 points): Subject IDs [1]: 10 | Clipper IDs [1]: 29
+  Group 77 Contour 3 (3 points): Subject IDs [1]: 10 | Clipper IDs [1]: 29
+  Group 77 Contour 4 (49 points): Subject IDs [1]: 10 | Clipper IDs [1]: 29
+  Group 78 Contour 0 (24 points): Subject IDs [1]: 6 | Clipper IDs [1]: 32
+  Group 79 Contour 0 (56 points): Subject IDs [1]: 140 | Clipper IDs [1]: 32
+  Group 80 Contour 0 (17 points): Subject IDs [1]: 143 | Clipper IDs [1]: 32
+  Group 81 Contour 0 (56 points): Subject IDs [1]: 224 | Clipper IDs [1]: 32
+  Group 82 Contour 0 (43 points): Subject IDs [1]: 225 | Clipper IDs [1]: 32
+  Group 83 Contour 0 (50 points): Subject IDs [1]: 37 | Clipper IDs [1]: 33
+  Group 84 Contour 0 (102 points): Subject IDs [1]: 39 | Clipper IDs [1]: 33
+  Group 84 Contour 1 (1 points): Subject IDs [1]: 39 | Clipper IDs [1]: 33
+  Group 84 Contour 2 (1 points): Subject IDs [1]: 39 | Clipper IDs [1]: 33
+  Group 85 Contour 0 (49 points): Subject IDs [1]: 41 | Clipper IDs [1]: 33
+  Group 85 Contour 1 (9 points): Subject IDs [1]: 41 | Clipper IDs [1]: 33
+  Group 85 Contour 2 (4 points): Subject IDs [1]: 41 | Clipper IDs [1]: 33
+  Group 85 Contour 3 (4 points): Subject IDs [1]: 41 | Clipper IDs [1]: 33
+  Group 85 Contour 4 (3 points): Subject IDs [1]: 41 | Clipper IDs [1]: 33
+  Group 85 Contour 5 (1 points): Subject IDs [1]: 41 | Clipper IDs [1]: 33
+  Group 86 Contour 0 (134 points): Subject IDs [1]: 58 | Clipper IDs [1]: 33
+  Group 87 Contour 0 (48 points): Subject IDs [1]: 39 | Clipper IDs [1]: 34
+  Group 87 Contour 1 (44 points): Subject IDs [1]: 39 | Clipper IDs [1]: 34
+  Group 87 Contour 2 (40 points): Subject IDs [1]: 39 | Clipper IDs [1]: 34
+  Group 87 Contour 3 (38 points): Subject IDs [1]: 39 | Clipper IDs [1]: 34
+  Group 87 Contour 4 (53 points): Subject IDs [1]: 39 | Clipper IDs [1]: 34
+  Group 88 Contour 0 (4 points): Subject IDs [1]: 10 | Clipper IDs [1]: 35
+  Group 89 Contour 0 (176 points): Subject IDs [1]: 18 | Clipper IDs [1]: 35
+  Group 89 Contour 1 (1 points): Subject IDs [1]: 18 | Clipper IDs [1]: 35
+  Group 89 Contour 2 (1 points): Subject IDs [1]: 18 | Clipper IDs [1]: 35
+  Group 90 Contour 0 (182 points): Subject IDs [1]: 18 | Clipper IDs [1]: 36
+  Group 91 Contour 0 (140 points): Subject IDs [1]: 24 | Clipper IDs [1]: 38
+  Group 92 Contour 0 (65 points): Subject IDs [1]: 25 | Clipper IDs [1]: 38
+  Group 92 Contour 1 (56 points): Subject IDs [1]: 25 | Clipper IDs [1]: 38
+  Group 93 Contour 0 (89 points): Subject IDs [1]: 30 | Clipper IDs [1]: 38
+  Group 93 Contour 1 (40 points): Subject IDs [1]: 30 | Clipper IDs [1]: 38
+  Group 93 Contour 2 (8 points): Subject IDs [1]: 30 | Clipper IDs [1]: 38
+  Group 93 Contour 3 (3 points): Subject IDs [1]: 30 | Clipper IDs [1]: 38
+  Group 93 Contour 4 (26 points): Subject IDs [1]: 30 | Clipper IDs [1]: 38
+  Group 93 Contour 5 (19 points): Subject IDs [1]: 30 | Clipper IDs [1]: 38
+  Group 93 Contour 6 (4 points): Subject IDs [1]: 30 | Clipper IDs [1]: 38
+  Group 93 Contour 7 (1 points): Subject IDs [1]: 30 | Clipper IDs [1]: 38
+  Group 94 Contour 0 (89 points): Subject IDs [1]: 39 | Clipper IDs [1]: 38
+  Group 94 Contour 1 (88 points): Subject IDs [1]: 39 | Clipper IDs [1]: 38
+  Group 95 Contour 0 (78 points): Subject IDs [1]: 25 | Clipper IDs [1]: 39
+  Group 96 Contour 0 (77 points): Subject IDs [1]: 39 | Clipper IDs [1]: 39
+  Group 96 Contour 1 (81 points): Subject IDs [1]: 39 | Clipper IDs [1]: 39
+  Group 97 Contour 0 (83 points): Subject IDs [1]: 42 | Clipper IDs [1]: 39
+  Group 98 Contour 0 (142 points): Subject IDs [1]: 45 | Clipper IDs [1]: 39
+  Group 98 Contour 1 (3 points): Subject IDs [1]: 45 | Clipper IDs [1]: 39
+  Group 99 Contour 0 (23 points): Subject IDs [1]: 46 | Clipper IDs [1]: 39
+  Group 99 Contour 1 (6 points): Subject IDs [1]: 46 | Clipper IDs [1]: 39
+  Group 99 Contour 2 (6 points): Subject IDs [1]: 46 | Clipper IDs [1]: 39
+  Group 99 Contour 3 (11 points): Subject IDs [1]: 46 | Clipper IDs [1]: 39
+  Group 100 Contour 0 (1 points): Subject IDs [1]: 59 | Clipper IDs [1]: 40
+  Group 100 Contour 1 (1 points): Subject IDs [1]: 59 | Clipper IDs [1]: 40
+  Group 100 Contour 2 (367 points): Subject IDs [1]: 59 | Clipper IDs [1]: 40
+  Group 101 Contour 0 (153 points): Subject IDs [1]: 67 | Clipper IDs [1]: 40
+  Group 101 Contour 1 (72 points): Subject IDs [1]: 67 | Clipper IDs [1]: 40
+  Group 101 Contour 2 (71 points): Subject IDs [1]: 67 | Clipper IDs [1]: 40
+  Group 102 Contour 0 (3 points): Subject IDs [1]: 73 | Clipper IDs [1]: 40
+  Group 102 Contour 1 (1 points): Subject IDs [1]: 73 | Clipper IDs [1]: 40
+  Group 103 Contour 0 (112 points): Subject IDs [1]: 63 | Clipper IDs [1]: 42
+  Group 104 Contour 0 (18 points): Subject IDs [1]: 65 | Clipper IDs [1]: 42
+  Group 104 Contour 1 (2 points): Subject IDs [1]: 65 | Clipper IDs [1]: 42
+  Group 104 Contour 2 (2 points): Subject IDs [1]: 65 | Clipper IDs [1]: 42
+  Group 104 Contour 3 (8 points): Subject IDs [1]: 65 | Clipper IDs [1]: 42
+  Group 105 Contour 0 (16 points): Subject IDs [1]: 67 | Clipper IDs [1]: 42
+  Group 105 Contour 1 (46 points): Subject IDs [1]: 67 | Clipper IDs [1]: 42
+  Group 106 Contour 0 (2 points): Subject IDs [1]: 66 | Clipper IDs [1]: 43
+  Group 107 Contour 0 (74 points): Subject IDs [1]: 67 | Clipper IDs [1]: 43
+  Group 107 Contour 1 (119 points): Subject IDs [1]: 67 | Clipper IDs [1]: 43
+  Group 107 Contour 2 (6 points): Subject IDs [1]: 67 | Clipper IDs [1]: 43
+  Group 108 Contour 0 (1 points): Subject IDs [1]: 71 | Clipper IDs [1]: 43
+  Group 108 Contour 1 (3 points): Subject IDs [1]: 71 | Clipper IDs [1]: 43
+  Group 109 Contour 0 (103 points): Subject IDs [1]: 78 | Clipper IDs [1]: 44
+  Group 110 Contour 0 (101 points): Subject IDs [1]: 79 | Clipper IDs [1]: 44
+  Group 111 Contour 0 (96 points): Subject IDs [1]: 68 | Clipper IDs [1]: 45
+  Group 112 Contour 0 (102 points): Subject IDs [1]: 80 | Clipper IDs [1]: 45
+  Group 113 Contour 0 (106 points): Subject IDs [1]: 71 | Clipper IDs [1]: 46
+  Group 114 Contour 0 (105 points): Subject IDs [1]: 79 | Clipper IDs [1]: 47
+  Group 115 Contour 0 (94 points): Subject IDs [1]: 81 | Clipper IDs [1]: 47
+  Group 116 Contour 0 (58 points): Subject IDs [1]: 45 | Clipper IDs [1]: 48
+  Group 116 Contour 1 (2 points): Subject IDs [1]: 45 | Clipper IDs [1]: 48
+  Group 117 Contour 0 (54 points): Subject IDs [1]: 71 | Clipper IDs [1]: 48
+  Group 118 Contour 0 (119 points): Subject IDs [1]: 74 | Clipper IDs [1]: 50
+  Group 119 Contour 0 (35 points): Subject IDs [1]: 46 | Clipper IDs [1]: 52
+  Group 120 Contour 0 (126 points): Subject IDs [1]: 78 | Clipper IDs [1]: 53
+  Group 121 Contour 0 (103 points): Subject IDs [1]: 80 | Clipper IDs [1]: 54
+  Group 122 Contour 0 (123 points): Subject IDs [1]: 83 | Clipper IDs [1]: 54
+  Group 123 Contour 0 (139 points): Subject IDs [1]: 75 | Clipper IDs [1]: 55
+  Group 124 Contour 0 (188 points): Subject IDs [1]: 85 | Clipper IDs [1]: 55
+  Group 125 Contour 0 (124 points): Subject IDs [1]: 68 | Clipper IDs [1]: 57
+  Group 126 Contour 0 (50 points): Subject IDs [1]: 69 | Clipper IDs [1]: 58
+  Group 127 Contour 0 (84 points): Subject IDs [1]: 35 | Clipper IDs [1]: 69
+  Group 128 Contour 0 (53 points): Subject IDs [1]: 61 | Clipper IDs [1]: 70
+  Group 128 Contour 1 (6 points): Subject IDs [1]: 61 | Clipper IDs [1]: 70
+  Group 128 Contour 2 (9 points): Subject IDs [1]: 61 | Clipper IDs [1]: 70
+  Group 128 Contour 3 (11 points): Subject IDs [1]: 61 | Clipper IDs [1]: 70
+  Group 128 Contour 4 (29 points): Subject IDs [1]: 61 | Clipper IDs [1]: 70
+  Group 128 Contour 5 (3 points): Subject IDs [1]: 61 | Clipper IDs [1]: 70
+  Group 129 Contour 0 (31 points): Subject IDs [1]: 52 | Clipper IDs [1]: 71
+  Group 129 Contour 1 (2 points): Subject IDs [1]: 52 | Clipper IDs [1]: 71
+  Group 129 Contour 2 (1 points): Subject IDs [1]: 52 | Clipper IDs [1]: 71
+  Group 130 Contour 0 (168 points): Subject IDs [1]: 31 | Clipper IDs [1]: 72
+  Group 131 Contour 0 (11 points): Subject IDs [1]: 35 | Clipper IDs [1]: 72
+  Group 131 Contour 1 (3 points): Subject IDs [1]: 35 | Clipper IDs [1]: 72
+  Group 132 Contour 0 (49 points): Subject IDs [1]: 54 | Clipper IDs [1]: 74
+  Group 133 Contour 0 (2 points): Subject IDs [1]: 57 | Clipper IDs [1]: 74
+  Group 134 Contour 0 (87 points): Subject IDs [1]: 59 | Clipper IDs [1]: 74
+  Group 134 Contour 1 (16 points): Subject IDs [1]: 59 | Clipper IDs [1]: 74
+  Group 134 Contour 2 (66 points): Subject IDs [1]: 59 | Clipper IDs [1]: 74
+  Group 134 Contour 3 (6 points): Subject IDs [1]: 59 | Clipper IDs [1]: 74
+  Group 134 Contour 4 (14 points): Subject IDs [1]: 59 | Clipper IDs [1]: 74
+  Group 134 Contour 5 (5 points): Subject IDs [1]: 59 | Clipper IDs [1]: 74
+  Group 134 Contour 6 (72 points): Subject IDs [1]: 59 | Clipper IDs [1]: 74
+  Group 134 Contour 7 (20 points): Subject IDs [1]: 59 | Clipper IDs [1]: 74
+  Group 135 Contour 0 (82 points): Subject IDs [1]: 61 | Clipper IDs [1]: 74
+  Group 135 Contour 1 (30 points): Subject IDs [1]: 61 | Clipper IDs [1]: 74
+  Group 136 Contour 0 (188 points): Subject IDs [1]: 62 | Clipper IDs [1]: 74
+  Group 137 Contour 0 (58 points): Subject IDs [1]: 64 | Clipper IDs [1]: 74
+  Group 138 Contour 0 (62 points): Subject IDs [1]: 67 | Clipper IDs [1]: 74
+  Group 139 Contour 0 (12 points): Subject IDs [1]: 73 | Clipper IDs [1]: 74
+  Group 139 Contour 1 (15 points): Subject IDs [1]: 73 | Clipper IDs [1]: 74
+  Group 139 Contour 2 (7 points): Subject IDs [1]: 73 | Clipper IDs [1]: 74
+  Group 139 Contour 3 (16 points): Subject IDs [1]: 73 | Clipper IDs [1]: 74
+  Group 139 Contour 4 (10 points): Subject IDs [1]: 73 | Clipper IDs [1]: 74
+  Group 139 Contour 5 (16 points): Subject IDs [1]: 73 | Clipper IDs [1]: 74
+  Group 140 Contour 0 (74 points): Subject IDs [1]: 54 | Clipper IDs [1]: 75
+  Group 140 Contour 1 (8 points): Subject IDs [1]: 54 | Clipper IDs [1]: 75
+  Group 140 Contour 2 (6 points): Subject IDs [1]: 54 | Clipper IDs [1]: 75
+  Group 140 Contour 3 (3 points): Subject IDs [1]: 54 | Clipper IDs [1]: 75
+  Group 140 Contour 4 (2 points): Subject IDs [1]: 54 | Clipper IDs [1]: 75
+  Group 140 Contour 5 (63 points): Subject IDs [1]: 54 | Clipper IDs [1]: 75
+  Group 141 Contour 0 (25 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 141 Contour 1 (2 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 141 Contour 2 (30 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 141 Contour 3 (1 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 141 Contour 4 (1 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 141 Contour 5 (3 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 141 Contour 6 (3 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 141 Contour 7 (1 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 141 Contour 8 (1 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 141 Contour 9 (3 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 141 Contour 10 (2 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 141 Contour 11 (1 points): Subject IDs [1]: 18 | Clipper IDs [1]: 76
+  Group 142 Contour 0 (1 points): Subject IDs [1]: 31 | Clipper IDs [1]: 76
+  Group 142 Contour 1 (1 points): Subject IDs [1]: 31 | Clipper IDs [1]: 76
+  Group 142 Contour 2 (1 points): Subject IDs [1]: 31 | Clipper IDs [1]: 76
+  Group 142 Contour 3 (1 points): Subject IDs [1]: 31 | Clipper IDs [1]: 76
+  Group 142 Contour 4 (1 points): Subject IDs [1]: 31 | Clipper IDs [1]: 76
+  Group 142 Contour 5 (1 points): Subject IDs [1]: 31 | Clipper IDs [1]: 76
+  Group 142 Contour 6 (1 points): Subject IDs [1]: 31 | Clipper IDs [1]: 76
+  Group 142 Contour 7 (2 points): Subject IDs [1]: 31 | Clipper IDs [1]: 76
+  Group 142 Contour 8 (1 points): Subject IDs [1]: 31 | Clipper IDs [1]: 76
+  Group 142 Contour 9 (41 points): Subject IDs [1]: 31 | Clipper IDs [1]: 76
+  Group 142 Contour 10 (1 points): Subject IDs [1]: 31 | Clipper IDs [1]: 76
+  Group 143 Contour 0 (3 points): Subject IDs [1]: 30 | Clipper IDs [1]: 77
+  Group 143 Contour 1 (4 points): Subject IDs [1]: 30 | Clipper IDs [1]: 77
+  Group 143 Contour 2 (5 points): Subject IDs [1]: 30 | Clipper IDs [1]: 77
+  Group 143 Contour 3 (3 points): Subject IDs [1]: 30 | Clipper IDs [1]: 77
+  Group 143 Contour 4 (12 points): Subject IDs [1]: 30 | Clipper IDs [1]: 77
+  Group 143 Contour 5 (4 points): Subject IDs [1]: 30 | Clipper IDs [1]: 77
+  Group 143 Contour 6 (11 points): Subject IDs [1]: 30 | Clipper IDs [1]: 77
+  Group 144 Contour 0 (38 points): Subject IDs [1]: 35 | Clipper IDs [1]: 78
+  Group 145 Contour 0 (20 points): Subject IDs [1]: 25 | Clipper IDs [1]: 79
+  Group 145 Contour 1 (7 points): Subject IDs [1]: 25 | Clipper IDs [1]: 79
+  Group 145 Contour 2 (1 points): Subject IDs [1]: 25 | Clipper IDs [1]: 79
+  Group 146 Contour 0 (72 points): Subject IDs [1]: 30 | Clipper IDs [1]: 79
+  Group 146 Contour 1 (1 points): Subject IDs [1]: 30 | Clipper IDs [1]: 79
+  Group 146 Contour 2 (2 points): Subject IDs [1]: 30 | Clipper IDs [1]: 79
+  Group 147 Contour 0 (174 points): Subject IDs [1]: 48 | Clipper IDs [1]: 80
+  Group 148 Contour 0 (54 points): Subject IDs [1]: 64 | Clipper IDs [1]: 81
+  Group 149 Contour 0 (50 points): Subject IDs [1]: 35 | Clipper IDs [1]: 82
+  Group 149 Contour 1 (5 points): Subject IDs [1]: 35 | Clipper IDs [1]: 82
+  Group 149 Contour 2 (3 points): Subject IDs [1]: 35 | Clipper IDs [1]: 82
+  Group 149 Contour 3 (2 points): Subject IDs [1]: 35 | Clipper IDs [1]: 82
+  Group 149 Contour 4 (2 points): Subject IDs [1]: 35 | Clipper IDs [1]: 82
+  Group 149 Contour 5 (38 points): Subject IDs [1]: 35 | Clipper IDs [1]: 82
+  Group 149 Contour 6 (1 points): Subject IDs [1]: 35 | Clipper IDs [1]: 82
+  Group 150 Contour 0 (116 points): Subject IDs [1]: 36 | Clipper IDs [1]: 82
+  Group 151 Contour 0 (168 points): Subject IDs [1]: 38 | Clipper IDs [1]: 83
+  Group 152 Contour 0 (129 points): Subject IDs [1]: 35 | Clipper IDs [1]: 84
+  Group 153 Contour 0 (170 points): Subject IDs [1]: 52 | Clipper IDs [1]: 85
+  Group 154 Contour 0 (5 points): Subject IDs [1]: 31 | Clipper IDs [1]: 86
+  Group 154 Contour 1 (5 points): Subject IDs [1]: 31 | Clipper IDs [1]: 86
+  Group 155 Contour 0 (82 points): Subject IDs [1]: 49 | Clipper IDs [1]: 87
+  Group 156 Contour 0 (45 points): Subject IDs [1]: 51 | Clipper IDs [1]: 87
+  Group 157 Contour 0 (174 points): Subject IDs [1]: 50 | Clipper IDs [1]: 88
+  Group 158 Contour 0 (1 points): Subject IDs [1]: 34 | Clipper IDs [1]: 89
+  Group 158 Contour 1 (1 points): Subject IDs [1]: 34 | Clipper IDs [1]: 89
+  Group 158 Contour 2 (1 points): Subject IDs [1]: 34 | Clipper IDs [1]: 89
+  Group 158 Contour 3 (85 points): Subject IDs [1]: 34 | Clipper IDs [1]: 89
+  Group 159 Contour 0 (76 points): Subject IDs [1]: 39 | Clipper IDs [1]: 89
+  Group 159 Contour 1 (160 points): Subject IDs [1]: 39 | Clipper IDs [1]: 89
+  Group 160 Contour 0 (3 points): Subject IDs [1]: 76 | Clipper IDs [1]: 89
+  Group 160 Contour 1 (9 points): Subject IDs [1]: 76 | Clipper IDs [1]: 89
+  Group 160 Contour 2 (2 points): Subject IDs [1]: 76 | Clipper IDs [1]: 89
+  Group 160 Contour 3 (4 points): Subject IDs [1]: 76 | Clipper IDs [1]: 89
+  Group 161 Contour 0 (168 points): Subject IDs [1]: 17 | Clipper IDs [1]: 90
+  Group 162 Contour 0 (171 points): Subject IDs [1]: 297 | Clipper IDs [1]: 91
+  Group 163 Contour 0 (141 points): Subject IDs [1]: 230 | Clipper IDs [1]: 92
+  Group 164 Contour 0 (76 points): Subject IDs [1]: 18 | Clipper IDs [1]: 93
+  Group 165 Contour 0 (8 points): Subject IDs [1]: 34 | Clipper IDs [1]: 93
+  Group 165 Contour 1 (8 points): Subject IDs [1]: 34 | Clipper IDs [1]: 93
+  Group 165 Contour 2 (3 points): Subject IDs [1]: 34 | Clipper IDs [1]: 93
+  Group 165 Contour 3 (1 points): Subject IDs [1]: 34 | Clipper IDs [1]: 93
+  Group 166 Contour 0 (98 points): Subject IDs [1]: 26 | Clipper IDs [1]: 94
+  Group 167 Contour 0 (65 points): Subject IDs [1]: 27 | Clipper IDs [1]: 94
+  Group 168 Contour 0 (171 points): Subject IDs [1]: 13 | Clipper IDs [1]: 95
+  Group 169 Contour 0 (179 points): Subject IDs [1]: 13 | Clipper IDs [1]: 96
+  Group 170 Contour 0 (114 points): Subject IDs [1]: 29 | Clipper IDs [1]: 97
+  Group 171 Contour 0 (67 points): Subject IDs [1]: 13 | Clipper IDs [1]: 98
+  Group 171 Contour 1 (3 points): Subject IDs [1]: 13 | Clipper IDs [1]: 98
+  Group 171 Contour 2 (2 points): Subject IDs [1]: 13 | Clipper IDs [1]: 98
+  Group 171 Contour 3 (56 points): Subject IDs [1]: 13 | Clipper IDs [1]: 98
+  Group 171 Contour 4 (1 points): Subject IDs [1]: 13 | Clipper IDs [1]: 98
+  Group 172 Contour 0 (45 points): Subject IDs [1]: 245 | Clipper IDs [1]: 98
+  Group 172 Contour 1 (1 points): Subject IDs [1]: 245 | Clipper IDs [1]: 98
+  Group 173 Contour 0 (149 points): Subject IDs [1]: 32 | Clipper IDs [1]: 99
+  Group 174 Contour 0 (3 points): Subject IDs [1]: 39 | Clipper IDs [1]: 99
+  Group 174 Contour 1 (25 points): Subject IDs [1]: 39 | Clipper IDs [1]: 99
+  Group 175 Contour 0 (27 points): Subject IDs [1]: 76 | Clipper IDs [1]: 99
+  Group 175 Contour 1 (8 points): Subject IDs [1]: 76 | Clipper IDs [1]: 99
+  Group 175 Contour 2 (3 points): Subject IDs [1]: 76 | Clipper IDs [1]: 99
+  Group 175 Contour 3 (4 points): Subject IDs [1]: 76 | Clipper IDs [1]: 99
+  Group 176 Contour 0 (51 points): Subject IDs [1]: 10 | Clipper IDs [1]: 100
+  Group 176 Contour 1 (1 points): Subject IDs [1]: 10 | Clipper IDs [1]: 100
+  Group 176 Contour 2 (1 points): Subject IDs [1]: 10 | Clipper IDs [1]: 100
+  Group 176 Contour 3 (75 points): Subject IDs [1]: 10 | Clipper IDs [1]: 100
+  Group 177 Contour 0 (23 points): Subject IDs [1]: 29 | Clipper IDs [1]: 100
+  Group 177 Contour 1 (3 points): Subject IDs [1]: 29 | Clipper IDs [1]: 100
+  Group 177 Contour 2 (2 points): Subject IDs [1]: 29 | Clipper IDs [1]: 100
+  Group 177 Contour 3 (5 points): Subject IDs [1]: 29 | Clipper IDs [1]: 100
+  Group 178 Contour 0 (87 points): Subject IDs [1]: 34 | Clipper IDs [1]: 100
+  Group 179 Contour 0 (198 points): Subject IDs [1]: 11 | Clipper IDs [1]: 101
+  Group 180 Contour 0 (164 points): Subject IDs [1]: 13 | Clipper IDs [1]: 102
+  Group 181 Contour 0 (20 points): Subject IDs [1]: 9 | Clipper IDs [1]: 103
+  Group 182 Contour 0 (82 points): Subject IDs [1]: 28 | Clipper IDs [1]: 103
+  Group 183 Contour 0 (45 points): Subject IDs [1]: 34 | Clipper IDs [1]: 103
+  Group 183 Contour 1 (2 points): Subject IDs [1]: 34 | Clipper IDs [1]: 103
+  Group 183 Contour 2 (26 points): Subject IDs [1]: 34 | Clipper IDs [1]: 103
+  Group 183 Contour 3 (4 points): Subject IDs [1]: 34 | Clipper IDs [1]: 103
+  Group 183 Contour 4 (3 points): Subject IDs [1]: 34 | Clipper IDs [1]: 103
+  Group 184 Contour 0 (101 points): Subject IDs [1]: 33 | Clipper IDs [1]: 104
+  Group 185 Contour 0 (129 points): Subject IDs [1]: 33 | Clipper IDs [1]: 105
+  Group 186 Contour 0 (189 points): Subject IDs [1]: 15 | Clipper IDs [1]: 106
+  Group 187 Contour 0 (19 points): Subject IDs [1]: 230 | Clipper IDs [1]: 107
+  Group 187 Contour 1 (6 points): Subject IDs [1]: 230 | Clipper IDs [1]: 107
+  Group 187 Contour 2 (2 points): Subject IDs [1]: 230 | Clipper IDs [1]: 107
+  Group 187 Contour 3 (24 points): Subject IDs [1]: 230 | Clipper IDs [1]: 107
+  Group 187 Contour 4 (5 points): Subject IDs [1]: 230 | Clipper IDs [1]: 107
+  Group 188 Contour 0 (168 points): Subject IDs [1]: 291 | Clipper IDs [1]: 107
+  Group 189 Contour 0 (28 points): Subject IDs [1]: 13 | Clipper IDs [1]: 108
+  Group 189 Contour 1 (7 points): Subject IDs [1]: 13 | Clipper IDs [1]: 108
+  Group 189 Contour 2 (8 points): Subject IDs [1]: 13 | Clipper IDs [1]: 108
+  Group 189 Contour 3 (5 points): Subject IDs [1]: 13 | Clipper IDs [1]: 108
+  Group 189 Contour 4 (2 points): Subject IDs [1]: 13 | Clipper IDs [1]: 108
+  Group 189 Contour 5 (9 points): Subject IDs [1]: 13 | Clipper IDs [1]: 108
+  Group 189 Contour 6 (1 points): Subject IDs [1]: 13 | Clipper IDs [1]: 108
+  Group 190 Contour 0 (64 points): Subject IDs [1]: 16 | Clipper IDs [1]: 108
+  Group 191 Contour 0 (81 points): Subject IDs [1]: 250 | Clipper IDs [1]: 109
+  Group 191 Contour 1 (5 points): Subject IDs [1]: 250 | Clipper IDs [1]: 109
+  Group 191 Contour 2 (41 points): Subject IDs [1]: 250 | Clipper IDs [1]: 109
+  Group 192 Contour 0 (84 points): Subject IDs [1]: 289 | Clipper IDs [1]: 109
+  Group 192 Contour 1 (2 points): Subject IDs [1]: 289 | Clipper IDs [1]: 109
+  Group 193 Contour 0 (137 points): Subject IDs [1]: 39 | Clipper IDs [1]: 112
+  Group 194 Contour 0 (179 points): Subject IDs [1]: 77 | Clipper IDs [1]: 113
+  Group 195 Contour 0 (107 points): Subject IDs [1]: 258 | Clipper IDs [1]: 114
+  Group 196 Contour 0 (96 points): Subject IDs [1]: 37 | Clipper IDs [1]: 116
+  Group 196 Contour 1 (7 points): Subject IDs [1]: 37 | Clipper IDs [1]: 116
+  Group 196 Contour 2 (8 points): Subject IDs [1]: 37 | Clipper IDs [1]: 116
+  Group 196 Contour 3 (2 points): Subject IDs [1]: 37 | Clipper IDs [1]: 116
+  Group 196 Contour 4 (62 points): Subject IDs [1]: 37 | Clipper IDs [1]: 116
+  Group 197 Contour 0 (115 points): Subject IDs [1]: 255 | Clipper IDs [1]: 118
+  Group 198 Contour 0 (78 points): Subject IDs [1]: 39 | Clipper IDs [1]: 119
+  Group 199 Contour 0 (160 points): Subject IDs [1]: 256 | Clipper IDs [1]: 120
+  Group 200 Contour 0 (20 points): Subject IDs [1]: 260 | Clipper IDs [1]: 122
+  Group 200 Contour 1 (33 points): Subject IDs [1]: 260 | Clipper IDs [1]: 122
+  Group 201 Contour 0 (34 points): Subject IDs [1]: 266 | Clipper IDs [1]: 122
+  Group 201 Contour 1 (2 points): Subject IDs [1]: 266 | Clipper IDs [1]: 122
+  Group 202 Contour 0 (148 points): Subject IDs [1]: 269 | Clipper IDs [1]: 122
+  Group 203 Contour 0 (26 points): Subject IDs [1]: 260 | Clipper IDs [1]: 125
+  Group 204 Contour 0 (128 points): Subject IDs [1]: 43 | Clipper IDs [1]: 126
+  Group 205 Contour 0 (112 points): Subject IDs [1]: 20 | Clipper IDs [1]: 128
+  Group 206 Contour 0 (52 points): Subject IDs [1]: 256 | Clipper IDs [1]: 128
+  Group 207 Contour 0 (35 points): Subject IDs [1]: 260 | Clipper IDs [1]: 128
+  Group 208 Contour 0 (86 points): Subject IDs [1]: 262 | Clipper IDs [1]: 129
+  Group 209 Contour 0 (34 points): Subject IDs [1]: 264 | Clipper IDs [1]: 129
+  Group 210 Contour 0 (62 points): Subject IDs [1]: 266 | Clipper IDs [1]: 129
+  Group 211 Contour 0 (65 points): Subject IDs [1]: 272 | Clipper IDs [1]: 129
+  Group 212 Contour 0 (168 points): Subject IDs [1]: 23 | Clipper IDs [1]: 130
+  Group 213 Contour 0 (199 points): Subject IDs [1]: 20 | Clipper IDs [1]: 131
+  Group 214 Contour 0 (55 points): Subject IDs [1]: 20 | Clipper IDs [1]: 132
+  Group 215 Contour 0 (45 points): Subject IDs [1]: 121 | Clipper IDs [1]: 135
+  Group 215 Contour 1 (23 points): Subject IDs [1]: 121 | Clipper IDs [1]: 135
+  Group 216 Contour 0 (72 points): Subject IDs [1]: 128 | Clipper IDs [1]: 135
+  Group 217 Contour 0 (36 points): Subject IDs [1]: 97 | Clipper IDs [1]: 137
+  Group 218 Contour 0 (34 points): Subject IDs [1]: 125 | Clipper IDs [1]: 138
+  Group 218 Contour 1 (1 points): Subject IDs [1]: 125 | Clipper IDs [1]: 138
+  Group 219 Contour 0 (72 points): Subject IDs [1]: 126 | Clipper IDs [1]: 138
+  Group 219 Contour 1 (2 points): Subject IDs [1]: 126 | Clipper IDs [1]: 138
+  Group 219 Contour 2 (2 points): Subject IDs [1]: 126 | Clipper IDs [1]: 138
+  Group 219 Contour 3 (2 points): Subject IDs [1]: 126 | Clipper IDs [1]: 138
+  Group 219 Contour 4 (2 points): Subject IDs [1]: 126 | Clipper IDs [1]: 138
+  Group 219 Contour 5 (10 points): Subject IDs [1]: 126 | Clipper IDs [1]: 138
+  Group 220 Contour 0 (120 points): Subject IDs [1]: 96 | Clipper IDs [1]: 140
+  Group 221 Contour 0 (106 points): Subject IDs [1]: 138 | Clipper IDs [1]: 140
+  Group 222 Contour 0 (13 points): Subject IDs [1]: 97 | Clipper IDs [1]: 141
+  Group 222 Contour 1 (2 points): Subject IDs [1]: 97 | Clipper IDs [1]: 141
+  Group 223 Contour 0 (89 points): Subject IDs [1]: 127 | Clipper IDs [1]: 141
+  Group 223 Contour 1 (2 points): Subject IDs [1]: 127 | Clipper IDs [1]: 141
+  Group 223 Contour 2 (1 points): Subject IDs [1]: 127 | Clipper IDs [1]: 141
+  Group 224 Contour 0 (18 points): Subject IDs [1]: 97 | Clipper IDs [1]: 142
+  Group 224 Contour 1 (21 points): Subject IDs [1]: 97 | Clipper IDs [1]: 142
+  Group 225 Contour 0 (28 points): Subject IDs [1]: 105 | Clipper IDs [1]: 142
+  Group 225 Contour 1 (8 points): Subject IDs [1]: 105 | Clipper IDs [1]: 142
+  Group 225 Contour 2 (9 points): Subject IDs [1]: 105 | Clipper IDs [1]: 142
+  Group 225 Contour 3 (2 points): Subject IDs [1]: 105 | Clipper IDs [1]: 142
+  Group 225 Contour 4 (2 points): Subject IDs [1]: 105 | Clipper IDs [1]: 142
+  Group 225 Contour 5 (2 points): Subject IDs [1]: 105 | Clipper IDs [1]: 142
+  Group 225 Contour 6 (2 points): Subject IDs [1]: 105 | Clipper IDs [1]: 142
+  Group 225 Contour 7 (4 points): Subject IDs [1]: 105 | Clipper IDs [1]: 142
+  Group 225 Contour 8 (66 points): Subject IDs [1]: 105 | Clipper IDs [1]: 142
+  Group 225 Contour 9 (1 points): Subject IDs [1]: 105 | Clipper IDs [1]: 142
+  Group 226 Contour 0 (87 points): Subject IDs [1]: 131 | Clipper IDs [1]: 143
+  Group 227 Contour 0 (62 points): Subject IDs [1]: 137 | Clipper IDs [1]: 143
+  Group 228 Contour 0 (38 points): Subject IDs [1]: 125 | Clipper IDs [1]: 144
+  Group 229 Contour 0 (77 points): Subject IDs [1]: 129 | Clipper IDs [1]: 144
+  Group 229 Contour 1 (3 points): Subject IDs [1]: 129 | Clipper IDs [1]: 144
+  Group 229 Contour 2 (2 points): Subject IDs [1]: 129 | Clipper IDs [1]: 144
+  Group 229 Contour 3 (69 points): Subject IDs [1]: 129 | Clipper IDs [1]: 144
+  Group 230 Contour 0 (87 points): Subject IDs [1]: 10 | Clipper IDs [1]: 146
+  Group 231 Contour 0 (1 points): Subject IDs [1]: 18 | Clipper IDs [1]: 147
+  Group 231 Contour 1 (2 points): Subject IDs [1]: 18 | Clipper IDs [1]: 147
+  Group 231 Contour 2 (2 points): Subject IDs [1]: 18 | Clipper IDs [1]: 147
+  Group 232 Contour 0 (21 points): Subject IDs [1]: 97 | Clipper IDs [1]: 147
+  Group 233 Contour 0 (50 points): Subject IDs [1]: 19 | Clipper IDs [1]: 149
+  Group 234 Contour 0 (107 points): Subject IDs [1]: 91 | Clipper IDs [1]: 150
+  Group 235 Contour 0 (94 points): Subject IDs [1]: 137 | Clipper IDs [1]: 150
+  Group 236 Contour 0 (10 points): Subject IDs [1]: 19 | Clipper IDs [1]: 157
+  Group 236 Contour 1 (3 points): Subject IDs [1]: 19 | Clipper IDs [1]: 157
+  Group 236 Contour 2 (7 points): Subject IDs [1]: 19 | Clipper IDs [1]: 157
+  Group 236 Contour 3 (9 points): Subject IDs [1]: 19 | Clipper IDs [1]: 157
+  Group 237 Contour 0 (2 points): Subject IDs [1]: 111 | Clipper IDs [1]: 157
+  Group 237 Contour 1 (37 points): Subject IDs [1]: 111 | Clipper IDs [1]: 157
+  Group 237 Contour 2 (41 points): Subject IDs [1]: 111 | Clipper IDs [1]: 157
+  Group 238 Contour 0 (158 points): Subject IDs [1]: 89 | Clipper IDs [1]: 158
+  Group 239 Contour 0 (178 points): Subject IDs [1]: 10 | Clipper IDs [1]: 161
+  Group 240 Contour 0 (35 points): Subject IDs [1]: 94 | Clipper IDs [1]: 161
+  Group 241 Contour 0 (96 points): Subject IDs [1]: 87 | Clipper IDs [1]: 162
+  Group 242 Contour 0 (20 points): Subject IDs [1]: 140 | Clipper IDs [1]: 162
+  Group 243 Contour 0 (136 points): Subject IDs [1]: 90 | Clipper IDs [1]: 163
+  Group 244 Contour 0 (69 points): Subject IDs [1]: 104 | Clipper IDs [1]: 163
+  Group 245 Contour 0 (1 points): Subject IDs [1]: 102 | Clipper IDs [1]: 164
+  Group 245 Contour 1 (1 points): Subject IDs [1]: 102 | Clipper IDs [1]: 164
+  Group 246 Contour 0 (85 points): Subject IDs [1]: 102 | Clipper IDs [1]: 165
+  Group 246 Contour 1 (4 points): Subject IDs [1]: 102 | Clipper IDs [1]: 165
+  Group 246 Contour 2 (2 points): Subject IDs [1]: 102 | Clipper IDs [1]: 165
+  Group 246 Contour 3 (2 points): Subject IDs [1]: 102 | Clipper IDs [1]: 165
+  Group 246 Contour 4 (2 points): Subject IDs [1]: 102 | Clipper IDs [1]: 165
+  Group 246 Contour 5 (43 points): Subject IDs [1]: 102 | Clipper IDs [1]: 165
+  Group 247 Contour 0 (42 points): Subject IDs [1]: 104 | Clipper IDs [1]: 165
+  Group 248 Contour 0 (122 points): Subject IDs [1]: 90 | Clipper IDs [1]: 166
+  Group 249 Contour 0 (74 points): Subject IDs [1]: 104 | Clipper IDs [1]: 166
+  Group 250 Contour 0 (68 points): Subject IDs [1]: 88 | Clipper IDs [1]: 170
+  Group 251 Contour 0 (72 points): Subject IDs [1]: 132 | Clipper IDs [1]: 170
+  Group 251 Contour 1 (49 points): Subject IDs [1]: 132 | Clipper IDs [1]: 170
+  Group 251 Contour 2 (34 points): Subject IDs [1]: 132 | Clipper IDs [1]: 170
+  Group 251 Contour 3 (9 points): Subject IDs [1]: 132 | Clipper IDs [1]: 170
+  Group 252 Contour 0 (1 points): Subject IDs [1]: 134 | Clipper IDs [1]: 170
+  Group 253 Contour 0 (122 points): Subject IDs [1]: 117 | Clipper IDs [1]: 175
+  Group 253 Contour 1 (78 points): Subject IDs [1]: 117 | Clipper IDs [1]: 175
+  Group 253 Contour 2 (31 points): Subject IDs [1]: 117 | Clipper IDs [1]: 175
+  Group 254 Contour 0 (110 points): Subject IDs [1]: 118 | Clipper IDs [1]: 175
+  Group 254 Contour 1 (61 points): Subject IDs [1]: 118 | Clipper IDs [1]: 175
+  Group 254 Contour 2 (101 points): Subject IDs [1]: 118 | Clipper IDs [1]: 175
+  Group 254 Contour 3 (118 points): Subject IDs [1]: 118 | Clipper IDs [1]: 175
+  Group 254 Contour 4 (4 points): Subject IDs [1]: 118 | Clipper IDs [1]: 175
+  Group 254 Contour 5 (11 points): Subject IDs [1]: 118 | Clipper IDs [1]: 175
+  Group 254 Contour 6 (32 points): Subject IDs [1]: 118 | Clipper IDs [1]: 175
+  Group 254 Contour 7 (14 points): Subject IDs [1]: 118 | Clipper IDs [1]: 175
+  Group 254 Contour 8 (7 points): Subject IDs [1]: 118 | Clipper IDs [1]: 175
+  Group 254 Contour 9 (2 points): Subject IDs [1]: 118 | Clipper IDs [1]: 175
+  Group 255 Contour 0 (149 points): Subject IDs [1]: 119 | Clipper IDs [1]: 175
+  Group 256 Contour 0 (93 points): Subject IDs [1]: 120 | Clipper IDs [1]: 175
+  Group 257 Contour 0 (8 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 1 (8 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 2 (2 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 3 (1 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 4 (125 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 5 (11 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 6 (5 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 7 (1 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 8 (1 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 9 (55 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 10 (11 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 11 (4 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 257 Contour 12 (3 points): Subject IDs [1]: 121 | Clipper IDs [1]: 175
+  Group 258 Contour 0 (13 points): Subject IDs [1]: 122 | Clipper IDs [1]: 175
+  Group 258 Contour 1 (6 points): Subject IDs [1]: 122 | Clipper IDs [1]: 175
+  Group 258 Contour 2 (5 points): Subject IDs [1]: 122 | Clipper IDs [1]: 175
+  Group 258 Contour 3 (22 points): Subject IDs [1]: 122 | Clipper IDs [1]: 175
+  Group 259 Contour 0 (114 points): Subject IDs [1]: 123 | Clipper IDs [1]: 175
+  Group 259 Contour 1 (24 points): Subject IDs [1]: 123 | Clipper IDs [1]: 175
+  Group 259 Contour 2 (15 points): Subject IDs [1]: 123 | Clipper IDs [1]: 175
+  Group 259 Contour 3 (3 points): Subject IDs [1]: 123 | Clipper IDs [1]: 175
+  Group 259 Contour 4 (1 points): Subject IDs [1]: 123 | Clipper IDs [1]: 175
+  Group 260 Contour 0 (41 points): Subject IDs [1]: 124 | Clipper IDs [1]: 175
+  Group 260 Contour 1 (1 points): Subject IDs [1]: 124 | Clipper IDs [1]: 175
+  Group 260 Contour 2 (1 points): Subject IDs [1]: 124 | Clipper IDs [1]: 175
+  Group 261 Contour 0 (2 points): Subject IDs [1]: 92 | Clipper IDs [1]: 177
+  Group 261 Contour 1 (61 points): Subject IDs [1]: 92 | Clipper IDs [1]: 177
+  Group 262 Contour 0 (104 points): Subject IDs [1]: 106 | Clipper IDs [1]: 177
+  Group 263 Contour 0 (127 points): Subject IDs [1]: 92 | Clipper IDs [1]: 178
+  Group 264 Contour 0 (67 points): Subject IDs [1]: 104 | Clipper IDs [1]: 178
+  Group 265 Contour 0 (30 points): Subject IDs [1]: 104 | Clipper IDs [1]: 179
+  Group 265 Contour 1 (70 points): Subject IDs [1]: 104 | Clipper IDs [1]: 179
+  Group 266 Contour 0 (29 points): Subject IDs [1]: 106 | Clipper IDs [1]: 179
+  Group 266 Contour 1 (3 points): Subject IDs [1]: 106 | Clipper IDs [1]: 179
+  Group 266 Contour 2 (2 points): Subject IDs [1]: 106 | Clipper IDs [1]: 179
+  Group 266 Contour 3 (2 points): Subject IDs [1]: 106 | Clipper IDs [1]: 179
+  Group 266 Contour 4 (17 points): Subject IDs [1]: 106 | Clipper IDs [1]: 179
+  Group 267 Contour 0 (80 points): Subject IDs [1]: 115 | Clipper IDs [1]: 181
+  Group 268 Contour 0 (105 points): Subject IDs [1]: 125 | Clipper IDs [1]: 182
+  Group 269 Contour 0 (64 points): Subject IDs [1]: 106 | Clipper IDs [1]: 184
+  Group 270 Contour 0 (193 points): Subject IDs [1]: 104 | Clipper IDs [1]: 186
+  Group 271 Contour 0 (92 points): Subject IDs [1]: 125 | Clipper IDs [1]: 186
+  Group 272 Contour 0 (134 points): Subject IDs [1]: 10 | Clipper IDs [1]: 187
+  Group 273 Contour 0 (90 points): Subject IDs [1]: 116 | Clipper IDs [1]: 187
+  Group 274 Contour 0 (32 points): Subject IDs [1]: 104 | Clipper IDs [1]: 188
+  Group 274 Contour 1 (1 points): Subject IDs [1]: 104 | Clipper IDs [1]: 188
+  Group 275 Contour 0 (97 points): Subject IDs [1]: 142 | Clipper IDs [1]: 191
+  Group 276 Contour 0 (69 points): Subject IDs [1]: 159 | Clipper IDs [1]: 191
+  Group 277 Contour 0 (24 points): Subject IDs [1]: 125 | Clipper IDs [1]: 192
+  Group 277 Contour 1 (21 points): Subject IDs [1]: 125 | Clipper IDs [1]: 192
+  Group 278 Contour 0 (82 points): Subject IDs [1]: 108 | Clipper IDs [1]: 195
+  Group 279 Contour 0 (47 points): Subject IDs [1]: 112 | Clipper IDs [1]: 195
+  Group 280 Contour 0 (131 points): Subject IDs [1]: 108 | Clipper IDs [1]: 196
+  Group 281 Contour 0 (49 points): Subject IDs [1]: 5 | Clipper IDs [1]: 197
+  Group 281 Contour 1 (6 points): Subject IDs [1]: 5 | Clipper IDs [1]: 197
+  Group 281 Contour 2 (26 points): Subject IDs [1]: 5 | Clipper IDs [1]: 197
+  Group 281 Contour 3 (3 points): Subject IDs [1]: 5 | Clipper IDs [1]: 197
+  Group 281 Contour 4 (2 points): Subject IDs [1]: 5 | Clipper IDs [1]: 197
+  Group 282 Contour 0 (115 points): Subject IDs [1]: 142 | Clipper IDs [1]: 197
+  Group 283 Contour 0 (116 points): Subject IDs [1]: 5 | Clipper IDs [1]: 199
+  Group 284 Contour 0 (106 points): Subject IDs [1]: 114 | Clipper IDs [1]: 199
+  Group 285 Contour 0 (78 points): Subject IDs [1]: 10 | Clipper IDs [1]: 200
+  Group 285 Contour 1 (1 points): Subject IDs [1]: 10 | Clipper IDs [1]: 200
+  Group 285 Contour 2 (5 points): Subject IDs [1]: 10 | Clipper IDs [1]: 200
+  Group 285 Contour 3 (131 points): Subject IDs [1]: 10 | Clipper IDs [1]: 200
+  Group 285 Contour 4 (8 points): Subject IDs [1]: 10 | Clipper IDs [1]: 200
+  Group 286 Contour 0 (33 points): Subject IDs [1]: 103 | Clipper IDs [1]: 200
+  Group 286 Contour 1 (7 points): Subject IDs [1]: 103 | Clipper IDs [1]: 200
+  Group 287 Contour 0 (144 points): Subject IDs [1]: 112 | Clipper IDs [1]: 200
+  Group 288 Contour 0 (2 points): Subject IDs [1]: 114 | Clipper IDs [1]: 200
+  Group 288 Contour 1 (1 points): Subject IDs [1]: 114 | Clipper IDs [1]: 200
+  Group 289 Contour 0 (144 points): Subject IDs [1]: 99 | Clipper IDs [1]: 201
+  Group 290 Contour 0 (35 points): Subject IDs [1]: 148 | Clipper IDs [1]: 201
+  Group 291 Contour 0 (1 points): Subject IDs [1]: 113 | Clipper IDs [1]: 203
+  Group 292 Contour 0 (52 points): Subject IDs [1]: 125 | Clipper IDs [1]: 203
+  Group 293 Contour 0 (183 points): Subject IDs [1]: 228 | Clipper IDs [1]: 205
+  Group 294 Contour 0 (104 points): Subject IDs [1]: 125 | Clipper IDs [1]: 207
+  Group 295 Contour 0 (16 points): Subject IDs [1]: 11 | Clipper IDs [1]: 208
+  Group 295 Contour 1 (11 points): Subject IDs [1]: 11 | Clipper IDs [1]: 208
+  Group 295 Contour 2 (116 points): Subject IDs [1]: 11 | Clipper IDs [1]: 208
+  Group 296 Contour 0 (77 points): Subject IDs [1]: 146 | Clipper IDs [1]: 209
+  Group 297 Contour 0 (88 points): Subject IDs [1]: 7 | Clipper IDs [1]: 210
+  Group 298 Contour 0 (117 points): Subject IDs [1]: 152 | Clipper IDs [1]: 210
+  Group 299 Contour 0 (25 points): Subject IDs [1]: 113 | Clipper IDs [1]: 212
+  Group 300 Contour 0 (19 points): Subject IDs [1]: 125 | Clipper IDs [1]: 212
+  Group 300 Contour 1 (8 points): Subject IDs [1]: 125 | Clipper IDs [1]: 212
+  Group 300 Contour 2 (2 points): Subject IDs [1]: 125 | Clipper IDs [1]: 212
+  Group 300 Contour 3 (2 points): Subject IDs [1]: 125 | Clipper IDs [1]: 212
+  Group 300 Contour 4 (2 points): Subject IDs [1]: 125 | Clipper IDs [1]: 212
+  Group 300 Contour 5 (60 points): Subject IDs [1]: 125 | Clipper IDs [1]: 212
+  Group 300 Contour 6 (1 points): Subject IDs [1]: 125 | Clipper IDs [1]: 212
+  Group 300 Contour 7 (8 points): Subject IDs [1]: 125 | Clipper IDs [1]: 212
+  Group 301 Contour 0 (60 points): Subject IDs [1]: 126 | Clipper IDs [1]: 212
+  Group 302 Contour 0 (32 points): Subject IDs [1]: 99 | Clipper IDs [1]: 213
+  Group 303 Contour 0 (11 points): Subject IDs [1]: 103 | Clipper IDs [1]: 213
+  Group 303 Contour 1 (8 points): Subject IDs [1]: 103 | Clipper IDs [1]: 213
+  Group 303 Contour 2 (1 points): Subject IDs [1]: 103 | Clipper IDs [1]: 213
+  Group 304 Contour 0 (112 points): Subject IDs [1]: 7 | Clipper IDs [1]: 214
+  Group 305 Contour 0 (113 points): Subject IDs [1]: 101 | Clipper IDs [1]: 214
+  Group 306 Contour 0 (37 points): Subject IDs [1]: 121 | Clipper IDs [1]: 215
+  Group 307 Contour 0 (108 points): Subject IDs [1]: 125 | Clipper IDs [1]: 215
+  Group 308 Contour 0 (151 points): Subject IDs [1]: 97 | Clipper IDs [1]: 216
+  Group 309 Contour 0 (150 points): Subject IDs [1]: 122 | Clipper IDs [1]: 218
+  Group 310 Contour 0 (68 points): Subject IDs [1]: 97 | Clipper IDs [1]: 223
+  Group 311 Contour 0 (39 points): Subject IDs [1]: 147 | Clipper IDs [1]: 233
+  Group 312 Contour 0 (1 points): Subject IDs [1]: 149 | Clipper IDs [1]: 233
+  Group 312 Contour 1 (1 points): Subject IDs [1]: 149 | Clipper IDs [1]: 233
+  Group 313 Contour 0 (152 points): Subject IDs [1]: 213 | Clipper IDs [1]: 234
+  Group 314 Contour 0 (11 points): Subject IDs [1]: 213 | Clipper IDs [1]: 235
+  Group 314 Contour 1 (15 points): Subject IDs [1]: 213 | Clipper IDs [1]: 235
+  Group 315 Contour 0 (137 points): Subject IDs [1]: 214 | Clipper IDs [1]: 235
+  Group 316 Contour 0 (136 points): Subject IDs [1]: 151 | Clipper IDs [1]: 237
+  Group 316 Contour 1 (7 points): Subject IDs [1]: 151 | Clipper IDs [1]: 237
+  Group 316 Contour 2 (2 points): Subject IDs [1]: 151 | Clipper IDs [1]: 237
+  Group 316 Contour 3 (23 points): Subject IDs [1]: 151 | Clipper IDs [1]: 237
+  Group 316 Contour 4 (2 points): Subject IDs [1]: 151 | Clipper IDs [1]: 237
+  Group 317 Contour 0 (126 points): Subject IDs [1]: 174 | Clipper IDs [1]: 241
+  Group 318 Contour 0 (99 points): Subject IDs [1]: 176 | Clipper IDs [1]: 241
+  Group 319 Contour 0 (3 points): Subject IDs [1]: 153 | Clipper IDs [1]: 245
+  Group 320 Contour 0 (45 points): Subject IDs [1]: 153 | Clipper IDs [1]: 246
+  Group 321 Contour 0 (17 points): Subject IDs [1]: 214 | Clipper IDs [1]: 248
+  Group 322 Contour 0 (68 points): Subject IDs [1]: 215 | Clipper IDs [1]: 248
+  Group 322 Contour 1 (6 points): Subject IDs [1]: 215 | Clipper IDs [1]: 248
+  Group 322 Contour 2 (5 points): Subject IDs [1]: 215 | Clipper IDs [1]: 248
+  Group 322 Contour 3 (15 points): Subject IDs [1]: 215 | Clipper IDs [1]: 248
+  Group 322 Contour 4 (1 points): Subject IDs [1]: 215 | Clipper IDs [1]: 248
+  Group 323 Contour 0 (44 points): Subject IDs [1]: 179 | Clipper IDs [1]: 249
+  Group 324 Contour 0 (3 points): Subject IDs [1]: 167 | Clipper IDs [1]: 256
+  Group 325 Contour 0 (91 points): Subject IDs [1]: 171 | Clipper IDs [1]: 256
+  Group 326 Contour 0 (12 points): Subject IDs [1]: 182 | Clipper IDs [1]: 257
+  Group 326 Contour 1 (183 points): Subject IDs [1]: 182 | Clipper IDs [1]: 257
+  Group 327 Contour 0 (107 points): Subject IDs [1]: 154 | Clipper IDs [1]: 258
+  Group 327 Contour 1 (14 points): Subject IDs [1]: 154 | Clipper IDs [1]: 258
+  Group 327 Contour 2 (2 points): Subject IDs [1]: 154 | Clipper IDs [1]: 258
+  Group 327 Contour 3 (3 points): Subject IDs [1]: 154 | Clipper IDs [1]: 258
+  Group 327 Contour 4 (62 points): Subject IDs [1]: 154 | Clipper IDs [1]: 258
+  Group 328 Contour 0 (50 points): Subject IDs [1]: 217 | Clipper IDs [1]: 265
+  Group 329 Contour 0 (160 points): Subject IDs [1]: 218 | Clipper IDs [1]: 265
+  Group 330 Contour 0 (20 points): Subject IDs [1]: 151 | Clipper IDs [1]: 268
+  Group 331 Contour 0 (61 points): Subject IDs [1]: 167 | Clipper IDs [1]: 268
+  Group 332 Contour 0 (15 points): Subject IDs [1]: 167 | Clipper IDs [1]: 275
+  Group 332 Contour 1 (3 points): Subject IDs [1]: 167 | Clipper IDs [1]: 275
+  Group 332 Contour 2 (3 points): Subject IDs [1]: 167 | Clipper IDs [1]: 275
+  Group 332 Contour 3 (55 points): Subject IDs [1]: 167 | Clipper IDs [1]: 275
+  Group 333 Contour 0 (116 points): Subject IDs [1]: 160 | Clipper IDs [1]: 280
+  Group 334 Contour 0 (8 points): Subject IDs [1]: 182 | Clipper IDs [1]: 280
+  Group 335 Contour 0 (37 points): Subject IDs [1]: 190 | Clipper IDs [1]: 280
+  Group 335 Contour 1 (9 points): Subject IDs [1]: 190 | Clipper IDs [1]: 280
+  Group 335 Contour 2 (1 points): Subject IDs [1]: 190 | Clipper IDs [1]: 280
+  Group 335 Contour 3 (2 points): Subject IDs [1]: 190 | Clipper IDs [1]: 280
+  Group 336 Contour 0 (152 points): Subject IDs [1]: 191 | Clipper IDs [1]: 280
+  Group 336 Contour 1 (42 points): Subject IDs [1]: 191 | Clipper IDs [1]: 280
+  Group 337 Contour 0 (135 points): Subject IDs [1]: 192 | Clipper IDs [1]: 280
+  Group 337 Contour 1 (20 points): Subject IDs [1]: 192 | Clipper IDs [1]: 280
+  Group 337 Contour 2 (15 points): Subject IDs [1]: 192 | Clipper IDs [1]: 280
+  Group 338 Contour 0 (58 points): Subject IDs [1]: 193 | Clipper IDs [1]: 280
+  Group 338 Contour 1 (40 points): Subject IDs [1]: 193 | Clipper IDs [1]: 280
+  Group 339 Contour 0 (169 points): Subject IDs [1]: 195 | Clipper IDs [1]: 280
+  Group 340 Contour 0 (236 points): Subject IDs [1]: 196 | Clipper IDs [1]: 280
+  Group 341 Contour 0 (146 points): Subject IDs [1]: 198 | Clipper IDs [1]: 280
+  Group 342 Contour 0 (180 points): Subject IDs [1]: 202 | Clipper IDs [1]: 280
+  Group 343 Contour 0 (192 points): Subject IDs [1]: 207 | Clipper IDs [1]: 280
+  Group 344 Contour 0 (182 points): Subject IDs [1]: 209 | Clipper IDs [1]: 280
+  Group 345 Contour 0 (66 points): Subject IDs [1]: 210 | Clipper IDs [1]: 280
+  Group 345 Contour 1 (47 points): Subject IDs [1]: 210 | Clipper IDs [1]: 280
+  Group 346 Contour 0 (116 points): Subject IDs [1]: 211 | Clipper IDs [1]: 280
+  Group 347 Contour 0 (18 points): Subject IDs [1]: 215 | Clipper IDs [1]: 280
+  Group 348 Contour 0 (144 points): Subject IDs [1]: 216 | Clipper IDs [1]: 280
+  Group 348 Contour 1 (62 points): Subject IDs [1]: 216 | Clipper IDs [1]: 280
+  Group 349 Contour 0 (37 points): Subject IDs [1]: 217 | Clipper IDs [1]: 280
+  Group 349 Contour 1 (27 points): Subject IDs [1]: 217 | Clipper IDs [1]: 280
+  Group 349 Contour 2 (1 points): Subject IDs [1]: 217 | Clipper IDs [1]: 280
+  Group 350 Contour 0 (200 points): Subject IDs [1]: 199 | Clipper IDs [1]: 283
+  Group 351 Contour 0 (184 points): Subject IDs [1]: 168 | Clipper IDs [1]: 286
+  Group 352 Contour 0 (69 points): Subject IDs [1]: 160 | Clipper IDs [1]: 287
+  Group 353 Contour 0 (75 points): Subject IDs [1]: 170 | Clipper IDs [1]: 288
+  Group 354 Contour 0 (60 points): Subject IDs [1]: 170 | Clipper IDs [1]: 289
+  Group 355 Contour 0 (48 points): Subject IDs [1]: 154 | Clipper IDs [1]: 295
+  Group 356 Contour 0 (42 points): Subject IDs [1]: 171 | Clipper IDs [1]: 295
+  Group 357 Contour 0 (182 points): Subject IDs [1]: 172 | Clipper IDs [1]: 295
+  Group 358 Contour 0 (4 points): Subject IDs [1]: 215 | Clipper IDs [1]: 295
+  Group 358 Contour 1 (3 points): Subject IDs [1]: 215 | Clipper IDs [1]: 295
+  Group 358 Contour 2 (34 points): Subject IDs [1]: 215 | Clipper IDs [1]: 295
+  Group 358 Contour 3 (1 points): Subject IDs [1]: 215 | Clipper IDs [1]: 295
+  Group 359 Contour 0 (169 points): Subject IDs [1]: 175 | Clipper IDs [1]: 299
+  Group 360 Contour 0 (41 points): Subject IDs [1]: 177 | Clipper IDs [1]: 299
+  Group 361 Contour 0 (25 points): Subject IDs [1]: 174 | Clipper IDs [1]: 300
+  Group 361 Contour 1 (3 points): Subject IDs [1]: 174 | Clipper IDs [1]: 300
+  Group 361 Contour 2 (3 points): Subject IDs [1]: 174 | Clipper IDs [1]: 300
+  Group 361 Contour 3 (2 points): Subject IDs [1]: 174 | Clipper IDs [1]: 300
+  Group 362 Contour 0 (45 points): Subject IDs [1]: 242 | Clipper IDs [1]: 306
+  Group 363 Contour 0 (172 points): Subject IDs [1]: 244 | Clipper IDs [1]: 306
+  Group 364 Contour 0 (7 points): Subject IDs [1]: 242 | Clipper IDs [1]: 308
+  Group 364 Contour 1 (5 points): Subject IDs [1]: 242 | Clipper IDs [1]: 308
+  Group 365 Contour 0 (54 points): Subject IDs [1]: 267 | Clipper IDs [1]: 309
+  Group 366 Contour 0 (37 points): Subject IDs [1]: 242 | Clipper IDs [1]: 313
+  Group 367 Contour 0 (58 points): Subject IDs [1]: 282 | Clipper IDs [1]: 313
+  Group 367 Contour 1 (7 points): Subject IDs [1]: 282 | Clipper IDs [1]: 313
+  Group 368 Contour 0 (52 points): Subject IDs [1]: 2 | Clipper IDs [1]: 315
+  Group 369 Contour 0 (107 points): Subject IDs [1]: 238 | Clipper IDs [1]: 320
+  Group 369 Contour 1 (45 points): Subject IDs [1]: 238 | Clipper IDs [1]: 320
+  Group 369 Contour 2 (43 points): Subject IDs [1]: 238 | Clipper IDs [1]: 320
+  Group 370 Contour 0 (66 points): Subject IDs [1]: 249 | Clipper IDs [1]: 320
+  Group 371 Contour 0 (88 points): Subject IDs [1]: 265 | Clipper IDs [1]: 320
+  Group 372 Contour 0 (85 points): Subject IDs [1]: 271 | Clipper IDs [1]: 320
+  Group 373 Contour 0 (33 points): Subject IDs [1]: 273 | Clipper IDs [1]: 320
+  Group 373 Contour 1 (72 points): Subject IDs [1]: 273 | Clipper IDs [1]: 320
+  Group 373 Contour 2 (1 points): Subject IDs [1]: 273 | Clipper IDs [1]: 320
+  Group 373 Contour 3 (119 points): Subject IDs [1]: 273 | Clipper IDs [1]: 320
+  Group 374 Contour 0 (72 points): Subject IDs [1]: 274 | Clipper IDs [1]: 320
+  Group 374 Contour 1 (44 points): Subject IDs [1]: 274 | Clipper IDs [1]: 320
+  Group 375 Contour 0 (92 points): Subject IDs [1]: 275 | Clipper IDs [1]: 320
+  Group 376 Contour 0 (147 points): Subject IDs [1]: 285 | Clipper IDs [1]: 320
+  Group 376 Contour 1 (66 points): Subject IDs [1]: 285 | Clipper IDs [1]: 320
+  Group 377 Contour 0 (169 points): Subject IDs [1]: 242 | Clipper IDs [1]: 321
+  Group 378 Contour 0 (85 points): Subject IDs [1]: 240 | Clipper IDs [1]: 322
+  Group 379 Contour 0 (191 points): Subject IDs [1]: 233 | Clipper IDs [1]: 325
+  Group 380 Contour 0 (169 points): Subject IDs [1]: 261 | Clipper IDs [1]: 325
+  Group 381 Contour 0 (165 points): Subject IDs [1]: 279 | Clipper IDs [1]: 325
+  Group 382 Contour 0 (2 points): Subject IDs [1]: 286 | Clipper IDs [1]: 325
+  Group 383 Contour 0 (43 points): Subject IDs [1]: 235 | Clipper IDs [1]: 332
+  Group 384 Contour 0 (98 points): Subject IDs [1]: 240 | Clipper IDs [1]: 332
+  Group 385 Contour 0 (82 points): Subject IDs [1]: 246 | Clipper IDs [1]: 334
+  Group 385 Contour 1 (10 points): Subject IDs [1]: 246 | Clipper IDs [1]: 334
+  Group 386 Contour 0 (66 points): Subject IDs [1]: 248 | Clipper IDs [1]: 334
+  Group 387 Contour 0 (17 points): Subject IDs [1]: 282 | Clipper IDs [1]: 334
+  Group 387 Contour 1 (2 points): Subject IDs [1]: 282 | Clipper IDs [1]: 334
+  Group 387 Contour 2 (11 points): Subject IDs [1]: 282 | Clipper IDs [1]: 334
+  Group 387 Contour 3 (51 points): Subject IDs [1]: 282 | Clipper IDs [1]: 334
+  Group 388 Contour 0 (7 points): Subject IDs [1]: 290 | Clipper IDs [1]: 334
+  Group 388 Contour 1 (4 points): Subject IDs [1]: 290 | Clipper IDs [1]: 334
+  Group 388 Contour 2 (5 points): Subject IDs [1]: 290 | Clipper IDs [1]: 334
+  Group 388 Contour 3 (2 points): Subject IDs [1]: 290 | Clipper IDs [1]: 334
+  Group 388 Contour 4 (2 points): Subject IDs [1]: 290 | Clipper IDs [1]: 334
+  Group 389 Contour 0 (161 points): Subject IDs [1]: 293 | Clipper IDs [1]: 334
+  Group 390 Contour 0 (91 points): Subject IDs [1]: 277 | Clipper IDs [1]: 344
+  Group 391 Contour 0 (148 points): Subject IDs [1]: 286 | Clipper IDs [1]: 344
+  Group 391 Contour 1 (35 points): Subject IDs [1]: 286 | Clipper IDs [1]: 344
+  Group 392 Contour 0 (164 points): Subject IDs [1]: 232 | Clipper IDs [1]: 348
+  Group 393 Contour 0 (190 points): Subject IDs [1]: 239 | Clipper IDs [1]: 348
+  Group 394 Contour 0 (65 points): Subject IDs [1]: 251 | Clipper IDs [1]: 348
+  Group 395 Contour 0 (26 points): Subject IDs [1]: 267 | Clipper IDs [1]: 349
+  Group 396 Contour 0 (145 points): Subject IDs [1]: 270 | Clipper IDs [1]: 349
+  Group 397 Contour 0 (170 points): Subject IDs [1]: 250 | Clipper IDs [1]: 354
+  Group 398 Contour 0 (88 points): Subject IDs [1]: 293 | Clipper IDs [1]: 354
+  Group 399 Contour 0 (58 points): Subject IDs [1]: 236 | Clipper IDs [1]: 357
+  Group 399 Contour 1 (10 points): Subject IDs [1]: 236 | Clipper IDs [1]: 357
+  Group 400 Contour 0 (194 points): Subject IDs [1]: 250 | Clipper IDs [1]: 360
+  Group 401 Contour 0 (9 points): Subject IDs [1]: 259 | Clipper IDs [1]: 360
+  Group 402 Contour 0 (25 points): Subject IDs [1]: 290 | Clipper IDs [1]: 360
+  Group 402 Contour 1 (2 points): Subject IDs [1]: 290 | Clipper IDs [1]: 360
+  Group 403 Contour 0 (125 points): Subject IDs [1]: 248 | Clipper IDs [1]: 362
+  Group 404 Contour 0 (74 points): Subject IDs [1]: 253 | Clipper IDs [1]: 362
+  Group 405 Contour 0 (62 points): Subject IDs [1]: 263 | Clipper IDs [1]: 362
+  Group 406 Contour 0 (113 points): Subject IDs [1]: 234 | Clipper IDs [1]: 363
+  Group 406 Contour 1 (71 points): Subject IDs [1]: 234 | Clipper IDs [1]: 363
+  Group 407 Contour 0 (150 points): Subject IDs [1]: 252 | Clipper IDs [1]: 363
+  Group 408 Contour 0 (79 points): Subject IDs [1]: 257 | Clipper IDs [1]: 363
+  Group 409 Contour 0 (157 points): Subject IDs [1]: 268 | Clipper IDs [1]: 363
+  Group 410 Contour 0 (154 points): Subject IDs [1]: 280 | Clipper IDs [1]: 363
+  Group 411 Contour 0 (177 points): Subject IDs [1]: 284 | Clipper IDs [1]: 363
+  Group 412 Contour 0 (153 points): Subject IDs [1]: 298 | Clipper IDs [1]: 363
+  Group 413 Contour 0 (6 points): Subject IDs [1]: 236 | Clipper IDs [1]: 365
+  Group 413 Contour 1 (33 points): Subject IDs [1]: 236 | Clipper IDs [1]: 365
+  Group 413 Contour 2 (1 points): Subject IDs [1]: 236 | Clipper IDs [1]: 365
+  Group 414 Contour 0 (139 points): Subject IDs [1]: 241 | Clipper IDs [1]: 365
+  Group 414 Contour 1 (121 points): Subject IDs [1]: 241 | Clipper IDs [1]: 365
+  Group 415 Contour 0 (139 points): Subject IDs [1]: 243 | Clipper IDs [1]: 365
+  Group 416 Contour 0 (105 points): Subject IDs [1]: 253 | Clipper IDs [1]: 365
+  Group 417 Contour 0 (46 points): Subject IDs [1]: 295 | Clipper IDs [1]: 365
+  Group 417 Contour 1 (42 points): Subject IDs [1]: 295 | Clipper IDs [1]: 365
+  Group 417 Contour 2 (1 points): Subject IDs [1]: 295 | Clipper IDs [1]: 365
+  Group 417 Contour 3 (1 points): Subject IDs [1]: 295 | Clipper IDs [1]: 365
+  Group 418 Contour 0 (4 points): Subject IDs [1]: 248 | Clipper IDs [1]: 366
+  Group 418 Contour 1 (3 points): Subject IDs [1]: 248 | Clipper IDs [1]: 366
+  Group 419 Contour 0 (50 points): Subject IDs [1]: 270 | Clipper IDs [1]: 366
+GPU tracing complete: extracted 819 contours
+Saved GPU contour visualization to: gpu_contour_tracing_visualization.png
+  Color coding: RED (groups 0-99), GREEN (groups 100-199), BLUE (groups 200+)
+  Labels show (subject_id, clipper_id) at first point of each contour
+GPU tracing found 819 contours
+Saved CPU raw contours: cpu_raw_contours.png (425 contours)
+Saved GPU raw contours: gpu_raw_contours.png (819 contours)
+Creating comparison visualization: GPU vs OpenCV contours
+  GPU contours: 819
+  OpenCV contours: 425
+  Saved comparison to: contour_comparison_intersection_cpu_gpu.png
+  Color legend: GREEN=OpenCV contours (bottom), RED=GPU contours (overlay on top)
+  Note: If GREEN is visible, GPU is missing that part
+  Saved reverse comparison to: contour_comparison_intersection_gpu_cpu.png
+  Color legend: RED=GPU contours (bottom), GREEN=OpenCV contours (overlay on top)
+  Note: If RED is visible, OpenCV is missing that part
+Saved simplification debug visualization: simplification_debug_layers.png
+  Layers (bottom to top): BLUE=Subject, RED=Clipper, GREEN=Raw contours, YELLOW=Intersection points
+  Grid: 200x200 pixels with axis labels
+
+============================================
+GPU Kernel Timing Summary
+============================================
+  Ray Casting:            22.955 ms
+  Overlay:                0.1536 ms
+  Intersection Compute:   0.20464 ms
+  Extract Contours:       0.093184 ms
+  Trace Contours:         4.45677 ms
+--------------------------------------------
+  Total GPU Kernel Time:  27.8632 ms
+============================================
+
+Intersection result: 405 polygons, 8840 vertices
+
+=== Generating Visualizations ===
+Generated: intersection_subject.png, intersection_clipper.png, intersection_result.png
+
+=== Ground Truth Comparison ===
+Loading ground truth layer 2 for INTERSECTION operation
+Creating verification comparison plot: intersection_raw_binary_vs_ground_truth_verification.png
+Drawing 425 ground truth polygons in green
+Drawing 405 result polygons in red
+Generated: intersection_raw_binary_vs_ground_truth_verification.png (comparison with ground truth)
+
+=== GPU vs OpenCV Contour Comparison ===
+Generated: contour_comparison_intersection.png
+Color legend:
+  - GREEN pixels: OpenCV findContours only
+  - RED pixels: GPU tracing only
+  - YELLOW pixels: Both methods agree
+
+=== Performance Statistics ===
+No performance data available (profiling disabled or no operations performed)
+
+=== Test Complete ===
