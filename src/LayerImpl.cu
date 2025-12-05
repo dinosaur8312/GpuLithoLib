@@ -36,7 +36,7 @@ __global__ void calculatePolygonBoundingBoxes(
 }
 
 LayerImpl::LayerImpl(unsigned int maxVerts, unsigned int maxPolys)
-    : h_vertices(nullptr), h_startIndices(nullptr), h_ptCounts(nullptr),
+    : h_vertices(nullptr), h_startIndices(nullptr), h_ptCounts(nullptr), h_boxes(nullptr),
       d_vertices(nullptr), d_startIndices(nullptr), d_ptCounts(nullptr), d_boxes(nullptr),
       d_bitmap(nullptr), h_bitmap(nullptr), bitmapInitialized(false),
       polygonCount(0), vertexCount(0), maxVertices(maxVerts), maxPolygons(maxPolys),
@@ -46,7 +46,7 @@ LayerImpl::LayerImpl(unsigned int maxVerts, unsigned int maxPolys)
 }
 
 LayerImpl::LayerImpl(const LayerImpl& other)
-    : h_vertices(nullptr), h_startIndices(nullptr), h_ptCounts(nullptr),
+    : h_vertices(nullptr), h_startIndices(nullptr), h_ptCounts(nullptr), h_boxes(nullptr),
       d_vertices(nullptr), d_startIndices(nullptr), d_ptCounts(nullptr), d_boxes(nullptr),
       d_bitmap(nullptr), h_bitmap(nullptr), bitmapInitialized(false),
       polygonCount(other.polygonCount), vertexCount(other.vertexCount),
@@ -105,6 +105,7 @@ void LayerImpl::allocateHost() {
         h_vertices = new uint2[maxVertices];
         h_startIndices = new unsigned int[maxPolygons];
         h_ptCounts = new unsigned int[maxPolygons];
+        h_boxes = new uint4[maxPolygons];
     }
 }
 
@@ -142,9 +143,11 @@ void LayerImpl::freeHost() {
     delete[] h_vertices;
     delete[] h_startIndices;
     delete[] h_ptCounts;
+    delete[] h_boxes;
     h_vertices = nullptr;
     h_startIndices = nullptr;
     h_ptCounts = nullptr;
+    h_boxes = nullptr;
 }
 
 void LayerImpl::freeDevice() {

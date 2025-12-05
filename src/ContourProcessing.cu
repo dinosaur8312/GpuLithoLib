@@ -194,6 +194,35 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
     cv::findContours(binaryImage, contours, hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_NONE);
 
     // ========================================================================
+    // Save CPU and GPU raw contours separately
+    // ========================================================================
+    if (opType == OperationType::INTERSECTION) {
+        // Save CPU raw contours
+        cv::Mat cpuRawImage = cv::Mat::zeros(currentGridHeight, currentGridWidth, CV_8UC3);
+        cv::Scalar cpuColor(0, 255, 0);  // Green
+        for (size_t i = 0; i < contours.size(); ++i) {
+            if (contours[i].size() > 1) {
+                cv::polylines(cpuRawImage, contours[i], true, cpuColor, 1, cv::LINE_8);
+            }
+        }
+        cv::imwrite("cpu_raw_contours.png", cpuRawImage);
+        std::cout << "Saved CPU raw contours: cpu_raw_contours.png (" << contours.size() << " contours)" << std::endl;
+
+        // Save GPU raw contours
+        if (!gpuContours.empty()) {
+            cv::Mat gpuRawImage = cv::Mat::zeros(currentGridHeight, currentGridWidth, CV_8UC3);
+            cv::Scalar gpuColor(0, 0, 255);  // Red
+            for (size_t i = 0; i < gpuContours.size(); ++i) {
+                if (gpuContours[i].size() > 1) {
+                    cv::polylines(gpuRawImage, gpuContours[i], true, gpuColor, 1, cv::LINE_8);
+                }
+            }
+            cv::imwrite("gpu_raw_contours.png", gpuRawImage);
+            std::cout << "Saved GPU raw contours: gpu_raw_contours.png (" << gpuContours.size() << " contours)" << std::endl;
+        }
+    }
+
+    // ========================================================================
     // Comparison Visualization for INTERSECTION operation
     // ========================================================================
     if (opType == OperationType::INTERSECTION && !gpuContours.empty()) {
@@ -277,7 +306,114 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::simplifyContoursWithGeo
     
     // Ensure bitmap is on host
     outputLayer->copyBitmapToHost();
-    
+
+    // ========================================================================
+    // Visualization: Subject, Clipper, Raw Contours, and Intersection Points
+    // ========================================================================
+    cv::Mat debugImage = cv::Mat::zeros(currentGridHeight, currentGridWidth, CV_8UC3);
+
+    // Layer 1 (bottom): Draw subject layer polygons in BLUE (line width 1)
+    cv::Scalar blueColor(255, 0, 0);  // BGR format
+    for (unsigned int polyIdx = 0; polyIdx < subjectLayer->polygonCount; ++polyIdx) {
+        unsigned int start = subjectLayer->h_startIndices[polyIdx];
+        unsigned int count = subjectLayer->h_ptCounts[polyIdx];
+
+        std::vector<cv::Point> polyPoints;
+        for (unsigned int i = 0; i < count; ++i) {
+            uint2 v = subjectLayer->h_vertices[start + i];
+            polyPoints.push_back(cv::Point(v.x, v.y));
+        }
+        if (polyPoints.size() > 1) {
+            cv::polylines(debugImage, polyPoints, true, blueColor, 1, cv::LINE_8);
+
+            // Add polygon ID label in blue at first vertex
+            std::string label = "S" + std::to_string(polyIdx);
+            cv::Point labelPos(polyPoints[0].x + 3, polyPoints[0].y - 3);
+            cv::putText(debugImage, label, labelPos, cv::FONT_HERSHEY_SIMPLEX, 0.3,
+                       blueColor, 1, cv::LINE_AA);
+        }
+    }
+
+    // Layer 2: Draw clipper layer polygons in RED (line width 1)
+    cv::Scalar redColor(0, 0, 255);  // BGR format
+    for (unsigned int polyIdx = 0; polyIdx < clipperLayer->polygonCount; ++polyIdx) {
+        unsigned int start = clipperLayer->h_startIndices[polyIdx];
+        unsigned int count = clipperLayer->h_ptCounts[polyIdx];
+
+        std::vector<cv::Point> polyPoints;
+        for (unsigned int i = 0; i < count; ++i) {
+            uint2 v = clipperLayer->h_vertices[start + i];
+            polyPoints.push_back(cv::Point(v.x, v.y));
+        }
+        if (polyPoints.size() > 1) {
+            cv::polylines(debugImage, polyPoints, true, redColor, 1, cv::LINE_8);
+
+            // Add polygon ID label in red at first vertex
+            std::string label = "C" + std::to_string(polyIdx);
+            cv::Point labelPos(polyPoints[0].x + 3, polyPoints[0].y - 3);
+            cv::putText(debugImage, label, labelPos, cv::FONT_HERSHEY_SIMPLEX, 0.3,
+                       redColor, 1, cv::LINE_AA);
+        }
+    }
+
+    // Layer 3: Draw raw contour pixels in GREEN (pixel size 1)
+    cv::Scalar greenColor(0, 255, 0);  // BGR format
+    for (const auto& contour : raw_contours) {
+        for (const auto& pt : contour) {
+            if (pt.x >= 0 && pt.x < static_cast<int>(currentGridWidth) &&
+                pt.y >= 0 && pt.y < static_cast<int>(currentGridHeight)) {
+                debugImage.at<cv::Vec3b>(pt.y, pt.x) = cv::Vec3b(0, 255, 0);  // Green pixel
+            }
+        }
+    }
+
+    // Layer 4 (top): Draw intersection points in YELLOW (circle size 2)
+    cv::Scalar yellowColor(0, 255, 255);  // BGR format
+    for (const auto& pair_entry : intersection_points_set) {
+        for (const auto& int_pt : pair_entry.second) {
+            cv::Point center(int_pt.x, int_pt.y);
+            if (center.x >= 0 && center.x < static_cast<int>(currentGridWidth) &&
+                center.y >= 0 && center.y < static_cast<int>(currentGridHeight)) {
+                cv::circle(debugImage, center, 2, yellowColor, -1, cv::LINE_AA);
+            }
+        }
+    }
+
+    // Add grid and axis labels
+    cv::Scalar gridColor(50, 50, 50);  // Dark gray grid
+    cv::Scalar axisColor(150, 150, 150);  // Light gray for axis labels
+
+    // Draw vertical grid lines every 200 pixels
+    for (unsigned int x = 0; x <= currentGridWidth; x += 200) {
+        cv::line(debugImage, cv::Point(x, 0), cv::Point(x, currentGridHeight - 1), gridColor, 1);
+
+        // Add X-axis label
+        if (x > 0) {
+            std::string label = std::to_string(x);
+            cv::putText(debugImage, label, cv::Point(x - 15, 15),
+                       cv::FONT_HERSHEY_SIMPLEX, 0.4, axisColor, 1, cv::LINE_AA);
+        }
+    }
+
+    // Draw horizontal grid lines every 200 pixels
+    for (unsigned int y = 0; y <= currentGridHeight; y += 200) {
+        cv::line(debugImage, cv::Point(0, y), cv::Point(currentGridWidth - 1, y), gridColor, 1);
+
+        // Add Y-axis label
+        if (y > 0) {
+            std::string label = std::to_string(y);
+            cv::putText(debugImage, label, cv::Point(5, y + 5),
+                       cv::FONT_HERSHEY_SIMPLEX, 0.4, axisColor, 1, cv::LINE_AA);
+        }
+    }
+
+    // Save the debug visualization
+    cv::imwrite("simplification_debug_layers.png", debugImage);
+    std::cout << "Saved simplification debug visualization: simplification_debug_layers.png" << std::endl;
+    std::cout << "  Layers (bottom to top): BLUE=Subject, RED=Clipper, GREEN=Raw contours, YELLOW=Intersection points" << std::endl;
+    std::cout << "  Grid: 200x200 pixels with axis labels" << std::endl;
+    // ========================================================================
+
     // Process each contour using the exact algorithm from main.cu (lines 1283-1624)
     for (size_t contour_idx = 0; contour_idx < raw_contours.size(); ++contour_idx) {
         const auto& contour = raw_contours[contour_idx];

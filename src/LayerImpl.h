@@ -28,7 +28,8 @@ public:
     uint2* h_vertices;
     unsigned int* h_startIndices;
     unsigned int* h_ptCounts;
-    
+    uint4* h_boxes;  // Host bounding boxes
+
     // Device data
     uint2* d_vertices;
     unsigned int* d_startIndices;

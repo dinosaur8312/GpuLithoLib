@@ -212,7 +212,7 @@ public:
         globalMaxX = std::max(bbox1[2], bbox2[2]);
         globalMaxY = std::max(bbox1[3], bbox2[3]);
         
-        // Add padding
+        // Add one pixel padding
         if (globalMinX > 0) globalMinX--;
         if (globalMinY > 0) globalMinY--;
         globalMaxX++;
