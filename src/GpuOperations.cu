@@ -401,6 +401,8 @@ __global__ void checkEdgeRightNeighbor_kernel(
     int ptCount = ptCounts[polygonIdx];
     uint4 box = boxes[polygonIdx];
 
+    bool debugFlag = (polygonNum==373)&&(polygonIdx==279); // Debug for polygon 297 and 279
+
     // Edge value used by edgeRender_kernel is polygonIdx + 1
     unsigned int edgeMarker = polygonIdx + 1;
 
@@ -450,7 +452,7 @@ __global__ void checkEdgeRightNeighbor_kernel(
                     // Skip if right neighbor is out of bounds or beyond box
                     if (testX >= bitmapWidth || testX > (int)box.z) {
                         // Mark as outside (right neighbor out of bounds)
-                        edgeBitmap[pixelIdx] = 0x0000FFFF;  // Outside marker
+                        edgeBitmap[pixelIdx] = (0x0000FFFF | (edgeMarker<<16));
                         continue;
                     }
 
@@ -488,9 +490,9 @@ __global__ void checkEdgeRightNeighbor_kernel(
 
                     // Mark edge pixel with inside/outside status
                     if (isInside) {
-                        edgeBitmap[pixelIdx] = 0xFFFF0000;  // Inside marker
+                        edgeBitmap[pixelIdx] = (0xFFFF0000 | edgeMarker);  // Inside marker
                     } else {
-                        edgeBitmap[pixelIdx] = 0x0000FFFF;  // Outside marker
+                        edgeBitmap[pixelIdx] = (0x0000FFFF | (edgeMarker<<16));  // Outside marker
                     }
                 }
             }
@@ -511,14 +513,16 @@ __global__ void findScanlineRanges_kernel(
     const unsigned int polygonNum,
     const unsigned int maxRangesPerScanline)
 {
-    int polygonIdx = blockIdx.x;
+    const int polygonIdx = blockIdx.x;
     if (polygonIdx >= polygonNum) return;
 
 
-    uint4 box = boxes[polygonIdx];
-    unsigned int edgeMarker = polygonIdx + 1;  // Same as edgeRender
-    unsigned int boxHeight = box.w - box.y;
-    unsigned int scanlineBase = scanlineOffsets[polygonIdx];
+    const uint4 box = boxes[polygonIdx];
+    const unsigned int edgeMarker = polygonIdx + 1;  // Same as edgeRender
+    const unsigned int insideMarker = 0xFFFF0000 | edgeMarker;
+    const unsigned int outsideMarker = 0x0000FFFF | (edgeMarker<<16);
+    const unsigned int boxHeight = box.w - box.y;
+    const unsigned int scanlineBase = scanlineOffsets[polygonIdx];
 
     // Each thread handles one scanline within the bounding box
     for (int localY = threadIdx.x; localY < boxHeight; localY += blockDim.x) {
@@ -542,8 +546,8 @@ __global__ void findScanlineRanges_kernel(
 
             // Check for inside marker (0xFFFF0000) or outside marker (0x0000FFFF)
             // These markers indicate processed edge pixels
-            bool isInsideMarker = (edgeValue == 0xFFFF0000);
-            bool isOutsideMarker = (edgeValue == 0x0000FFFF);
+            bool isInsideMarker = (edgeValue == insideMarker);
+            bool isOutsideMarker = (edgeValue == outsideMarker);
             bool isEdgePixel = isInsideMarker || isOutsideMarker;
 
             if (isEdgePixel) {
@@ -591,7 +595,13 @@ __global__ void renderScanlineRanges_kernel(
     const unsigned int maxRangesPerScanline)
 {
     int polygonIdx = blockIdx.x;
+    if(blockIdx.x==0 && threadIdx.x==0){
+        printf("Entering renderScanlineRanges_kernel, polygonNum=%u\n", polygonNum);
+    }
+
     if (polygonIdx >= polygonNum) return;
+
+    bool debugFlag = (polygonNum==373)&&(polygonIdx==297 || polygonIdx==279); // Debug for polygon 297
 
     uint4 box = boxes[polygonIdx];
     unsigned int polygonId = polygonIdx + 1;
@@ -609,10 +619,18 @@ __global__ void renderScanlineRanges_kernel(
 
         // Fill all ranges for this scanline
         for (unsigned int r = 0; r < rangeCount; r++) {
+            if(debugFlag && globalY==749){
+                printf("Clipper Polygon %u, scanline %u, range %u: (%u, %u)\n",
+                       polygonId, globalY, r, ranges[r].x, ranges[r].y);
+            }
             uint2 range = ranges[r];
             for (unsigned int x = range.x; x < range.y; x++) {
                 if (x < bitmapWidth) {
-                    bitmap[globalY * bitmapWidth + x] = polygonId;
+                    int pixelIdx = globalY * bitmapWidth + x;
+                    bitmap[pixelIdx] = polygonId;
+                    if(debugFlag&&(pixelIdx==2247600)){
+                        printf("Clipper Polygon %u filling pixel (%u, %u)=%u\n", polygonId, x, globalY, pixelIdx);
+                    }
                 }
             }
         }

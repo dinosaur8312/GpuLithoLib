@@ -204,6 +204,135 @@ IntersectionComputeEngine::computeAllIntersectionPoints(
     CHECK_GPU_ERROR(gpuMemcpy(h_clipper_bitmap.data(), clipperLayer->d_bitmap,
                                totalPixels * sizeof(unsigned int), gpuMemcpyDeviceToHost));
 
+    // ========== DEBUG: Check specific pixel indices for clipper polygon 297 ==========
+    std::cout << "\n========== DEBUG: Checking specific pixel indices for clipper 297 ==========" << std::endl;
+    std::cout << "These pixels were filled by renderScanlineRanges_kernel for Polygon 298:" << std::endl;
+
+    // Check indices from the log: 2247600, 2250600, 2253600 (corresponding to y=749,750,751 at x=600)
+    unsigned int debug_indices[] = {2247600, 2250600, 2253600, 2256600, 2259600};
+    for (int i = 0; i < 5; ++i) {
+        unsigned int idx = debug_indices[i];
+        if (idx < totalPixels) {
+            unsigned int clipper_val = h_clipper_bitmap[idx];
+            unsigned int overlay_val = h_bitmap[idx];
+            unsigned int subject_val = h_subject_bitmap[idx];
+
+            unsigned int x = idx % currentGridWidth;
+            unsigned int y = idx / currentGridWidth;
+
+            std::cout << "  Index " << idx << " (x=" << x << ", y=" << y << "):" << std::endl;
+            std::cout << "    clipper_bitmap[" << idx << "] = " << clipper_val << std::endl;
+            std::cout << "    subject_bitmap[" << idx << "] = " << subject_val << std::endl;
+            std::cout << "    overlay_bitmap[" << idx << "] = " << overlay_val
+                      << " (subject=" << (overlay_val & 0xFFFF)
+                      << ", clipper=" << ((overlay_val >> 16) & 0xFFFF) << ")" << std::endl;
+        } else {
+            std::cout << "  Index " << idx << " is OUT OF BOUNDS (totalPixels=" << totalPixels << ")" << std::endl;
+        }
+    }
+    std::cout << "  currentGridWidth = " << currentGridWidth << ", currentGridHeight = " << currentGridHeight << std::endl;
+    std::cout << "========== END DEBUG: specific pixel indices ==========" << std::endl;
+
+    // ========== DEBUG: Print pixel locations for clipper 279 and 297 ==========
+    std::cout << "\n========== DEBUG: Pixel locations for clipper 279 and 297 ==========" << std::endl;
+
+    unsigned int target_clipper_279 = 279;
+    unsigned int target_clipper_297 = 297;
+    unsigned int clipper_279_pixel = target_clipper_279 + 1;  // 280
+    unsigned int clipper_297_pixel = target_clipper_297 + 1;  // 298
+
+    std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> clipper_279_pixels;  // (x, y, idx)
+    std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> clipper_297_pixels;  // (x, y, idx)
+
+    // Scan overlay bitmap for these clipper IDs
+    for (unsigned int idx = 0; idx < totalPixels; ++idx) {
+        unsigned int pixelValue = h_bitmap[idx];
+        unsigned int clipper_val = (pixelValue >> 16) & 0xFFFF;
+
+        if (clipper_val == clipper_279_pixel) {
+            unsigned int x = idx % currentGridWidth;
+            unsigned int y = idx / currentGridWidth;
+            clipper_279_pixels.push_back(std::make_tuple(x, y, idx));
+        }
+
+        if (clipper_val == clipper_297_pixel) {
+            unsigned int x = idx % currentGridWidth;
+            unsigned int y = idx / currentGridWidth;
+            clipper_297_pixels.push_back(std::make_tuple(x, y, idx));
+        }
+    }
+
+    // Print results for clipper 279
+    std::cout << "\nClipper 279 (pixel value " << clipper_279_pixel << "):" << std::endl;
+    std::cout << "  Total pixels: " << clipper_279_pixels.size() << std::endl;
+    if (clipper_279_pixels.size() > 0) {
+        std::cout << "  First 20 pixels (x, y, idx):" << std::endl;
+        for (size_t i = 0; i < std::min(clipper_279_pixels.size(), size_t(20)); ++i) {
+            auto [x, y, idx] = clipper_279_pixels[i];
+            std::cout << "    (" << x << ", " << y << ", idx=" << idx << ")" << std::endl;
+        }
+        if (clipper_279_pixels.size() > 20) {
+            std::cout << "  ... and " << (clipper_279_pixels.size() - 20) << " more pixels" << std::endl;
+        }
+    }
+
+    // Print results for clipper 297
+    std::cout << "\nClipper 297 (pixel value " << clipper_297_pixel << ") in OVERLAY bitmap:" << std::endl;
+    std::cout << "  Total pixels: " << clipper_297_pixels.size() << std::endl;
+    if (clipper_297_pixels.size() > 0) {
+        std::cout << "  First 20 pixels (x, y, idx):" << std::endl;
+        for (size_t i = 0; i < std::min(clipper_297_pixels.size(), size_t(20)); ++i) {
+            auto [x, y, idx] = clipper_297_pixels[i];
+            std::cout << "    (" << x << ", " << y << ", idx=" << idx << ")" << std::endl;
+        }
+        if (clipper_297_pixels.size() > 20) {
+            std::cout << "  ... and " << (clipper_297_pixels.size() - 20) << " more pixels" << std::endl;
+        }
+    }
+
+    // Also check the clipper-only bitmap
+    std::cout << "\n--- Checking CLIPPER-ONLY bitmap for clipper 297 ---" << std::endl;
+    std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> clipper_297_direct_pixels;
+
+    for (unsigned int idx = 0; idx < totalPixels; ++idx) {
+        unsigned int clipper_value = h_clipper_bitmap[idx];
+
+        if (clipper_value == clipper_297_pixel) {
+            unsigned int x = idx % currentGridWidth;
+            unsigned int y = idx / currentGridWidth;
+            clipper_297_direct_pixels.push_back(std::make_tuple(x, y, idx));
+        }
+    }
+
+    std::cout << "Clipper 297 in clipper-only bitmap:" << std::endl;
+    std::cout << "  Total pixels: " << clipper_297_direct_pixels.size() << std::endl;
+    if (clipper_297_direct_pixels.size() > 0) {
+        std::cout << "  First 20 pixels (x, y, idx):" << std::endl;
+        for (size_t i = 0; i < std::min(clipper_297_direct_pixels.size(), size_t(20)); ++i) {
+            auto [x, y, idx] = clipper_297_direct_pixels[i];
+            std::cout << "    (" << x << ", " << y << ", idx=" << idx << ")" << std::endl;
+        }
+        if (clipper_297_direct_pixels.size() > 20) {
+            std::cout << "  ... and " << (clipper_297_direct_pixels.size() - 20) << " more pixels" << std::endl;
+        }
+
+        // Print bounding box
+        unsigned int min_x = UINT_MAX, max_x = 0, min_y = UINT_MAX, max_y = 0;
+        for (const auto& [x, y, idx] : clipper_297_direct_pixels) {
+            min_x = std::min(min_x, x);
+            max_x = std::max(max_x, x);
+            min_y = std::min(min_y, y);
+            max_y = std::max(max_y, y);
+        }
+        std::cout << "  Bounding box: (" << min_x << ", " << min_y << ") to (" << max_x << ", " << max_y << ")" << std::endl;
+    } else {
+        std::cout << "  ✗ Clipper 297 NOT FOUND in clipper bitmap!" << std::endl;
+        std::cout << "  This means clipper polygon 297 was not rendered at all during raycasting." << std::endl;
+    }
+
+    std::cout << "========== END CLIPPER PIXEL LOCATIONS DEBUG ==========\n" << std::endl;
+    // ========== END DEBUG ==========
+
     // ========== DEBUG: Visualize cropped clipper bitmap (0 <= x <= 600) ==========
     std::cout << "\n========== Creating cropped clipper bitmap visualization ==========" << std::endl;
 

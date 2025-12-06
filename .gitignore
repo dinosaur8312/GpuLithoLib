@@ -1,6 +1,7 @@
 # Build directories
 build/*
 !build/*.png
+!build/*.log
 cmake-build-*/
 out/
 
@@ -82,7 +83,6 @@ Thumbs.db
 *.jpeg
 *.bmp
 *.tiff
-*.log
 # Ignore output .txt files but not source files
 *_result.txt
 *_output.txt

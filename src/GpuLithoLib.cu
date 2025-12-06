@@ -669,18 +669,110 @@ public:
 
         auto output = std::make_unique<LayerImpl>();
 
+        // ========== DEBUG: Visualize preparedLayer2 (clipper) using CPU vertex data ==========
+        {
+            std::cout << "\n========== DEBUG: Visualizing preparedLayer2 (clipper layer) ==========" << std::endl;
+
+            // Create image with white background
+            cv::Mat clipperImage(currentGridHeight, currentGridWidth, CV_8UC3, cv::Scalar(255, 255, 255));
+
+            // Draw 200x200 grid
+            cv::Scalar gridColor(200, 200, 200);  // Light gray
+            for (int x = 0; x < currentGridWidth; x += 200) {
+                cv::line(clipperImage, cv::Point(x, 0), cv::Point(x, currentGridHeight - 1), gridColor, 1);
+            }
+            for (int y = 0; y < currentGridHeight; y += 200) {
+                cv::line(clipperImage, cv::Point(0, y), cv::Point(currentGridWidth - 1, y), gridColor, 1);
+            }
+
+            // Draw polygons using CPU vertex data
+            unsigned int numPolygons = preparedLayer2->polygonCount;
+            std::cout << "  Number of polygons in preparedLayer2: " << numPolygons << std::endl;
+
+            for (unsigned int polyIdx = 0; polyIdx < numPolygons; ++polyIdx) {
+                unsigned int startIdx = preparedLayer2->h_startIndices[polyIdx];
+                unsigned int ptCount = preparedLayer2->h_ptCounts[polyIdx];
+
+                if (ptCount < 3) continue;
+
+                // Draw polygon edges in red
+                for (unsigned int i = 0; i < ptCount; ++i) {
+                    unsigned int nextI = (i + 1) % ptCount;
+                    uint2 p1 = preparedLayer2->h_vertices[startIdx + i];
+                    uint2 p2 = preparedLayer2->h_vertices[startIdx + nextI];
+                    cv::line(clipperImage, cv::Point(p1.x, p1.y), cv::Point(p2.x, p2.y), cv::Scalar(0, 0, 255), 1);
+                }
+
+                // Draw polygon ID label near first vertex
+                uint2 firstVert = preparedLayer2->h_vertices[startIdx];
+                std::string label = std::to_string(polyIdx);
+                cv::putText(clipperImage, label, cv::Point(firstVert.x + 2, firstVert.y - 2),
+                            cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 0, 0), 1);
+            }
+
+            // Draw tick marks and labels on axes
+            cv::Scalar tickColor(0, 0, 0);  // Black
+            for (int x = 0; x < currentGridWidth; x += 200) {
+                cv::line(clipperImage, cv::Point(x, 0), cv::Point(x, 10), tickColor, 2);
+                cv::putText(clipperImage, std::to_string(x), cv::Point(x + 2, 25),
+                            cv::FONT_HERSHEY_SIMPLEX, 0.4, tickColor, 1);
+            }
+            for (int y = 0; y < currentGridHeight; y += 200) {
+                cv::line(clipperImage, cv::Point(0, y), cv::Point(10, y), tickColor, 2);
+                cv::putText(clipperImage, std::to_string(y), cv::Point(12, y + 5),
+                            cv::FONT_HERSHEY_SIMPLEX, 0.4, tickColor, 1);
+            }
+
+            cv::imwrite("debug_clipper_layer_vertices.png", clipperImage);
+            std::cout << "  Saved to debug_clipper_layer_vertices.png" << std::endl;
+            std::cout << "========== END DEBUG: clipper layer visualization ==========" << std::endl;
+        }
+
         // Step 1: Ray casting for both layers
         // Old method (commented out):
         // performRayCasting(preparedLayer1.get(), (opType == OperationType::DIFFERENCE) ? 1 : 1);
         // performRayCasting(preparedLayer2.get(), (opType == OperationType::DIFFERENCE) ? 0 : 1);
 
         // New optimized scanline method:
+        cudaDeviceSynchronize();  // Ensure first layer is done before second
+        fflush(0);
+        printf("Starting scanline ray casting for layer 1...\n");
         performScanlineRayCasting(preparedLayer1.get(), (opType == OperationType::DIFFERENCE) ? 1 : 1);
+        cudaDeviceSynchronize();  // Ensure first layer is done before second
+        printf("Starting scanline ray casting for layer 2...\n");
+        fflush(0);
         performScanlineRayCasting(preparedLayer2.get(), (opType == OperationType::DIFFERENCE) ? 0 : 1);
-        
+        cudaDeviceSynchronize();  // Ensure first layer is done before second
+        fflush(0);
+
+        // ========== DEBUG: Check preparedLayer2 bitmap at index 2247600 ==========
+        {
+            unsigned int debug_idx = 2247600;
+            unsigned int h_clipper_pixel_val = 0;
+            CHECK_GPU_ERROR(gpuMemcpy(&h_clipper_pixel_val, preparedLayer2->d_bitmap + debug_idx,
+                                       sizeof(unsigned int), gpuMemcpyDeviceToHost));
+            std::cout << "\n========== DEBUG: preparedLayer2 bitmap after scanline raycasting ==========" << std::endl;
+            std::cout << "  preparedLayer2->d_bitmap[" << debug_idx << "] = " << h_clipper_pixel_val << std::endl;
+            std::cout << "========== END DEBUG ==========" << std::endl;
+        }
+
         // Step 2: Overlay
         performOverlay(preparedLayer1.get(), preparedLayer2.get(), output.get());
-        
+
+        // ========== DEBUG: Check output bitmap at index 2247600 after overlay ==========
+        {
+            unsigned int debug_idx = 2247600;
+            unsigned int h_output_pixel_val = 0;
+            CHECK_GPU_ERROR(gpuMemcpy(&h_output_pixel_val, output->d_bitmap + debug_idx,
+                                       sizeof(unsigned int), gpuMemcpyDeviceToHost));
+            unsigned int subject_part = h_output_pixel_val & 0xFFFF;
+            unsigned int clipper_part = (h_output_pixel_val >> 16) & 0xFFFF;
+            std::cout << "\n========== DEBUG: output bitmap after overlay ==========" << std::endl;
+            std::cout << "  output->d_bitmap[" << debug_idx << "] = " << h_output_pixel_val
+                      << " (subject=" << subject_part << ", clipper=" << clipper_part << ")" << std::endl;
+            std::cout << "========== END DEBUG ==========" << std::endl;
+        }
+
         // Step 3: Compute intersection points from overlay result
         auto intersection_points_set = intersectionEngine.computeAllIntersectionPoints(
             output.get(), preparedLayer1.get(), preparedLayer2.get(),
