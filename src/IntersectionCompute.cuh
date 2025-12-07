@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../include/gpuLitho.h"
-#include "GpuOperations.cuh"
+#include "CommonRenderUtils.cuh"
 #include <set>
 #include <map>
 #include <opencv2/opencv.hpp>

@@ -1,7 +1,7 @@
 #include "RawContourDetectEngine.cuh"
 #include "GpuKernelProfiler.cuh"
 #include "LayerImpl.h"
-#include "GpuOperations.cuh"
+#include "CommonRenderUtils.cuh"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <algorithm>

@@ -58,10 +58,13 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 # Source files
 set(LIBRARY_SOURCES
     src/LayerImpl.cu
-    src/GpuOperations.cu
+    src/CommonRenderUtils.cu
+    src/RayCastingEngine.cu
+    src/ScanlineRayCastingEngine.cu
     src/IntersectionCompute.cu
     src/RawContourDetectEngine.cu
     src/SimplifyContourEngine.cu
+    src/VisualizationUtils.cu
     src/GpuLithoLib.cu
     src/operation_types.cu
     src/GpuKernelProfiler.cu

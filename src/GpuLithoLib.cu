@@ -1,9 +1,12 @@
 #include "../include/GpuLithoLib.h"
 #include "LayerImpl.h"
-#include "GpuOperations.cuh"
+#include "CommonRenderUtils.cuh"
+#include "RayCastingEngine.cuh"
+#include "ScanlineRayCastingEngine.cuh"
 #include "IntersectionCompute.cuh"
 #include "RawContourDetectEngine.cuh"
 #include "SimplifyContourEngine.cuh"
+#include "VisualizationUtils.h"
 #include "GpuKernelProfiler.cuh"
 #include <opencv2/opencv.hpp>
 #include <iostream>
@@ -125,6 +128,10 @@ public:
 
     // Intersection computation engine (persistent GPU memory)
     IntersectionComputeEngine intersectionEngine;
+
+    // Ray casting engines
+    RayCastingEngine rayCastingEngine;
+    ScanlineRayCastingEngine scanlineRayCastingEngine;
 
     // Raw contour detection engine
     RawContourDetectEngine rawContourEngine;
@@ -272,63 +279,17 @@ public:
         }
     }
     
-    // Perform ray casting on a layer
+    // Perform ray casting on a layer (delegates to RayCastingEngine)
     void performRayCasting(LayerImpl* layer, int edgeMode = 1) {
-        if (!layer || layer->empty()) return;
-        
-        layer->ensureBitmapAllocated(currentGridWidth, currentGridHeight);
-        layer->copyToDevice();
-        layer->calculateBoundingBoxes();
-        
         gpuEvent_t start, stop;
         if (profilingEnabled) {
             gpuEventCreate(&start);
             gpuEventCreate(&stop);
             gpuEventRecord(start);
         }
-        
-        // Launch ray casting kernel with timing
-        gpuEvent_t rcStart, rcStop;
-        gpuEventCreate(&rcStart);
-        gpuEventCreate(&rcStop);
-        gpuEventRecord(rcStart);
 
-        rayCasting_kernel<<<layer->polygonCount, 512>>>(
-            layer->d_vertices,
-            layer->d_startIndices,
-            layer->d_ptCounts,
-            layer->d_boxes,
-            layer->d_bitmap,
-            currentGridWidth,
-            currentGridHeight,
-            layer->polygonCount);
+        rayCastingEngine.performRayCasting(layer, currentGridWidth, currentGridHeight, edgeMode, &kernelProfiler);
 
-        CHECK_GPU_ERROR(gpuGetLastError());
-
-        // Optionally render edges
-        if (edgeMode >= 0) {
-            edgeRender_kernel<<<layer->polygonCount, 256>>>(
-                layer->d_vertices,
-                layer->d_startIndices,
-                layer->d_ptCounts,
-                layer->d_bitmap,
-                currentGridWidth,
-                currentGridHeight,
-                edgeMode);
-
-            CHECK_GPU_ERROR(gpuGetLastError());
-        }
-
-        gpuEventRecord(rcStop);
-        gpuEventSynchronize(rcStop);
-
-        float rcMs = 0.0f;
-        gpuEventElapsedTime(&rcMs, rcStart, rcStop);
-        kernelProfiler.addRayCastingTime(rcMs);
-
-        gpuEventDestroy(rcStart);
-        gpuEventDestroy(rcStop);
-        
         if (profilingEnabled) {
             gpuEventRecord(stop);
             gpuEventSynchronize(stop);
@@ -340,14 +301,8 @@ public:
         }
     }
 
-    // Perform optimized scanline ray casting on a layer (Range-based approach)
+    // Perform optimized scanline ray casting on a layer (delegates to ScanlineRayCastingEngine)
     void performScanlineRayCasting(LayerImpl* layer, int edgeMode = 1) {
-        if (!layer || layer->empty()) return;
-
-        layer->ensureBitmapAllocated(currentGridWidth, currentGridHeight);
-        layer->copyToDevice();
-        layer->calculateBoundingBoxes();
-
         gpuEvent_t start, stop;
         if (profilingEnabled) {
             gpuEventCreate(&start);
@@ -355,166 +310,7 @@ public:
             gpuEventRecord(start);
         }
 
-        const unsigned int maxRangesPerScanline = 32;
-
-        // Step 1: Allocate separate edge bitmap
-        unsigned int bitmapSize = currentGridWidth * currentGridHeight;
-        unsigned int* d_edgeBitmap = nullptr;
-        CHECK_GPU_ERROR(gpuMalloc(&d_edgeBitmap, bitmapSize * sizeof(unsigned int)));
-        CHECK_GPU_ERROR(gpuMemset(d_edgeBitmap, 0, bitmapSize * sizeof(unsigned int)));
-
-        // Step 2: Calculate total scanlines needed and scanline offsets
-        // Copy bounding boxes to host to compute offsets
-        thrust::device_vector<uint4> d_boxes_vec(layer->d_boxes, layer->d_boxes + layer->polygonCount);
-        thrust::host_vector<uint4> h_boxes = d_boxes_vec;
-
-        thrust::host_vector<unsigned int> h_scanlineOffsets(layer->polygonCount + 1);
-        unsigned int totalScanlines = 0;
-        for (unsigned int i = 0; i < layer->polygonCount; i++) {
-            h_scanlineOffsets[i] = totalScanlines;
-            unsigned int boxHeight = h_boxes[i].w - h_boxes[i].y;
-            totalScanlines += boxHeight;
-        }
-        h_scanlineOffsets[layer->polygonCount] = totalScanlines;
-
-        // Allocate device buffers for scanline ranges
-        unsigned int* d_scanlineOffsets = nullptr;
-        uint2* d_scanlineRanges = nullptr;
-        unsigned int* d_scanlineRangeCounts = nullptr;
-
-        CHECK_GPU_ERROR(gpuMalloc(&d_scanlineOffsets, (layer->polygonCount + 1) * sizeof(unsigned int)));
-        CHECK_GPU_ERROR(gpuMalloc(&d_scanlineRanges, totalScanlines * maxRangesPerScanline * sizeof(uint2)));
-        CHECK_GPU_ERROR(gpuMalloc(&d_scanlineRangeCounts, totalScanlines * sizeof(unsigned int)));
-
-        CHECK_GPU_ERROR(gpuMemcpy(d_scanlineOffsets, h_scanlineOffsets.data(),
-                                  (layer->polygonCount + 1) * sizeof(unsigned int), gpuMemcpyHostToDevice));
-        CHECK_GPU_ERROR(gpuMemset(d_scanlineRangeCounts, 0, totalScanlines * sizeof(unsigned int)));
-
-        // Step 3: Render edges to edge bitmap
-        gpuEvent_t rcStart, rcStop;
-        gpuEventCreate(&rcStart);
-        gpuEventCreate(&rcStop);
-        gpuEventRecord(rcStart);
-
-        edgeRender_kernel<<<layer->polygonCount, 512>>>(
-            layer->d_vertices,
-            layer->d_startIndices,
-            layer->d_ptCounts,
-            d_edgeBitmap,
-            currentGridWidth,
-            currentGridHeight,
-            1);  // mode=1 to render edges
-        CHECK_GPU_ERROR(gpuGetLastError());
-
-        // Step 4: Check edge-right neighbors and mark inside/outside
-        checkEdgeRightNeighbor_kernel<<<layer->polygonCount, 512>>>(
-            layer->d_vertices,
-            layer->d_startIndices,
-            layer->d_ptCounts,
-            layer->d_boxes,
-            d_edgeBitmap,
-            currentGridWidth,
-            currentGridHeight,
-            layer->polygonCount);
-        CHECK_GPU_ERROR(gpuGetLastError());
-
-        // Step 5: Find scanline ranges
-        findScanlineRanges_kernel<<<layer->polygonCount, 512>>>(
-            d_edgeBitmap,
-            layer->d_boxes,
-            d_scanlineOffsets,
-            d_scanlineRanges,
-            d_scanlineRangeCounts,
-            currentGridWidth,
-            currentGridHeight,
-            layer->polygonCount,
-            maxRangesPerScanline);
-        CHECK_GPU_ERROR(gpuGetLastError());
-
-        // Step 6: Render polygon interiors using ranges
-        renderScanlineRanges_kernel<<<layer->polygonCount, 512>>>(
-            layer->d_boxes,
-            d_scanlineOffsets,
-            d_scanlineRanges,
-            d_scanlineRangeCounts,
-            layer->d_bitmap,
-            currentGridWidth,
-            currentGridHeight,
-            layer->polygonCount,
-            maxRangesPerScanline);
-        CHECK_GPU_ERROR(gpuGetLastError());
-
-        gpuEventRecord(rcStop);
-        gpuEventSynchronize(rcStop);
-
-        float rcMs = 0.0f;
-        gpuEventElapsedTime(&rcMs, rcStart, rcStop);
-        kernelProfiler.addRayCastingTime(rcMs);
-
-        gpuEventDestroy(rcStart);
-        gpuEventDestroy(rcStop);
-
-        // Debug: Save bitmap visualization with polygon outlines
-        {
-            static int debugCounter = 0;
-            std::string filename = "debug_scanline_bitmap_" + std::to_string(debugCounter++) + ".png";
-
-            // Copy bitmap from device to host
-            std::vector<unsigned int> h_bitmap(bitmapSize);
-            CHECK_GPU_ERROR(gpuMemcpy(h_bitmap.data(), layer->d_bitmap,
-                                      bitmapSize * sizeof(unsigned int), gpuMemcpyDeviceToHost));
-
-            // Create color image for visualization
-            cv::Mat image(currentGridHeight, currentGridWidth, CV_8UC3, cv::Scalar(255, 255, 255));
-
-            // Draw filled regions (blue for any polygon)
-            for (unsigned int y = 0; y < currentGridHeight; y++) {
-                for (unsigned int x = 0; x < currentGridWidth; x++) {
-                    unsigned int val = h_bitmap[y * currentGridWidth + x];
-                    if (val > 0) {
-                        image.at<cv::Vec3b>(y, x) = cv::Vec3b(200, 150, 100);  // Light blue fill
-                    }
-                }
-            }
-
-            // Draw polygon outlines using CPU vertex data
-            for (unsigned int p = 0; p < layer->polygonCount; p++) {
-                unsigned int startIdx = layer->h_startIndices[p];
-                unsigned int ptCount = layer->h_ptCounts[p];
-
-                for (unsigned int i = 0; i < ptCount; i++) {
-                    uint2 v1 = layer->h_vertices[startIdx + i];
-                    uint2 v2 = layer->h_vertices[startIdx + (i + 1) % ptCount];
-                        // define a color based on polygon index
-                        cv::Scalar color;
-                        if (p <= 102) {
-                            color = cv::Scalar(0, 255, 0);  // Green
-                        } else if (p <= 103) {
-                            color = cv::Scalar(0, 0, 255);  // Red
-                        } else if (p <= 105) {
-                            color = cv::Scalar(255, 0, 0);  // Blue
-                        }
-                        else {
-                            color = cv::Scalar(0, 0, 0);    // Black
-                        }
-
-                        cv::line(image,
-                                cv::Point(v1.x, v1.y),
-                                cv::Point(v2.x, v2.y),
-                                color,
-                                1, cv::LINE_AA);
-                }
-            }
-
-            cv::imwrite(filename, image);
-            std::cout << "Saved debug bitmap: " << filename << std::endl;
-        }
-
-        // Clean up temporary buffers
-        gpuFree(d_edgeBitmap);
-        gpuFree(d_scanlineOffsets);
-        gpuFree(d_scanlineRanges);
-        gpuFree(d_scanlineRangeCounts);
+        scanlineRayCastingEngine.performScanlineRayCasting(layer, currentGridWidth, currentGridHeight, edgeMode, &kernelProfiler);
 
         if (profilingEnabled) {
             gpuEventRecord(stop);
@@ -673,64 +469,12 @@ public:
 
         auto output = std::make_unique<LayerImpl>();
 
-        // ========== DEBUG: Visualize preparedLayer2 (clipper) using CPU vertex data ==========
-        {
-            std::cout << "\n========== DEBUG: Visualizing preparedLayer2 (clipper layer) ==========" << std::endl;
-
-            // Create image with white background
-            cv::Mat clipperImage(currentGridHeight, currentGridWidth, CV_8UC3, cv::Scalar(255, 255, 255));
-
-            // Draw 200x200 grid
-            cv::Scalar gridColor(200, 200, 200);  // Light gray
-            for (int x = 0; x < currentGridWidth; x += 200) {
-                cv::line(clipperImage, cv::Point(x, 0), cv::Point(x, currentGridHeight - 1), gridColor, 1);
-            }
-            for (int y = 0; y < currentGridHeight; y += 200) {
-                cv::line(clipperImage, cv::Point(0, y), cv::Point(currentGridWidth - 1, y), gridColor, 1);
-            }
-
-            // Draw polygons using CPU vertex data
-            unsigned int numPolygons = preparedLayer2->polygonCount;
-            std::cout << "  Number of polygons in preparedLayer2: " << numPolygons << std::endl;
-
-            for (unsigned int polyIdx = 0; polyIdx < numPolygons; ++polyIdx) {
-                unsigned int startIdx = preparedLayer2->h_startIndices[polyIdx];
-                unsigned int ptCount = preparedLayer2->h_ptCounts[polyIdx];
-
-                if (ptCount < 3) continue;
-
-                // Draw polygon edges in red
-                for (unsigned int i = 0; i < ptCount; ++i) {
-                    unsigned int nextI = (i + 1) % ptCount;
-                    uint2 p1 = preparedLayer2->h_vertices[startIdx + i];
-                    uint2 p2 = preparedLayer2->h_vertices[startIdx + nextI];
-                    cv::line(clipperImage, cv::Point(p1.x, p1.y), cv::Point(p2.x, p2.y), cv::Scalar(0, 0, 255), 1);
-                }
-
-                // Draw polygon ID label near first vertex
-                uint2 firstVert = preparedLayer2->h_vertices[startIdx];
-                std::string label = std::to_string(polyIdx);
-                cv::putText(clipperImage, label, cv::Point(firstVert.x + 2, firstVert.y - 2),
-                            cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 0, 0), 1);
-            }
-
-            // Draw tick marks and labels on axes
-            cv::Scalar tickColor(0, 0, 0);  // Black
-            for (int x = 0; x < currentGridWidth; x += 200) {
-                cv::line(clipperImage, cv::Point(x, 0), cv::Point(x, 10), tickColor, 2);
-                cv::putText(clipperImage, std::to_string(x), cv::Point(x + 2, 25),
-                            cv::FONT_HERSHEY_SIMPLEX, 0.4, tickColor, 1);
-            }
-            for (int y = 0; y < currentGridHeight; y += 200) {
-                cv::line(clipperImage, cv::Point(0, y), cv::Point(10, y), tickColor, 2);
-                cv::putText(clipperImage, std::to_string(y), cv::Point(12, y + 5),
-                            cv::FONT_HERSHEY_SIMPLEX, 0.4, tickColor, 1);
-            }
-
-            cv::imwrite("debug_clipper_layer_vertices.png", clipperImage);
-            std::cout << "  Saved to debug_clipper_layer_vertices.png" << std::endl;
-            std::cout << "========== END DEBUG: clipper layer visualization ==========" << std::endl;
-        }
+        // DEBUG: Visualize preparedLayer2 (clipper) using CPU vertex data
+        VisualizationUtils::visualizeSingleLayer(
+            preparedLayer2.get(),
+            currentGridWidth, currentGridHeight,
+            cv::Scalar(0, 0, 255),  // Red
+            "debug_clipper_layer_vertices.png");
 
         // Step 1: Ray casting for both layers
         // Old method (commented out):
@@ -1307,7 +1051,7 @@ bool GpuLithoEngine::visualizeVerificationComparison(const Layer& resultLayer, c
         if (!points.empty()) {
             const cv::Point* pts = points.data();
             int npts = static_cast<int>(points.size());
-            cv::polylines(image, &pts, &npts, 1, true, cv::Scalar(0, 255, 0), 2); // Green lines
+            cv::polylines(image, &pts, &npts, 1, true, cv::Scalar(0, 255, 0), 1); // Green lines
         }
     }
     

@@ -1,7 +1,7 @@
 #include "IntersectionCompute.cuh"
 #include "GpuKernelProfiler.cuh"
 #include "LayerImpl.h"
-#include "GpuOperations.cuh"
+#include "CommonRenderUtils.cuh"
 #include "../include/GpuLithoLib.h"
 #include <thrust/device_vector.h>
 #include <thrust/device_ptr.h>
