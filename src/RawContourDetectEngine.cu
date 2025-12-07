@@ -1,4 +1,4 @@
-#include "ContourProcessing.cuh"
+#include "RawContourDetectEngine.cuh"
 #include "GpuKernelProfiler.cuh"
 #include "LayerImpl.h"
 #include "GpuOperations.cuh"
@@ -6,6 +6,24 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+#include <thrust/sort.h>
+#include <thrust/remove.h>
+#include <thrust/sequence.h>
+#include <thrust/copy.h>
+#include <thrust/unique.h>
+#include <thrust/distance.h>
+#include <thrust/scan.h>
+#include <thrust/transform.h>
+#include <thrust/iterator/zip_iterator.h>
+#include <thrust/tuple.h>
+
+// Platform-specific CUB include
+#ifdef __HIP_PLATFORM_AMD__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#else
+#include <cub/device/device_run_length_encode.cuh>
+#endif
 
 namespace GpuLithoLib {
 
@@ -13,19 +31,18 @@ namespace GpuLithoLib {
 extern GpuKernelProfiler* g_kernelProfiler;
 
 // ============================================================================
-// ContourDetectEngine Implementation
+// RawContourDetectEngine Implementation
 // ============================================================================
 
-ContourDetectEngine::ContourDetectEngine() {}
+RawContourDetectEngine::RawContourDetectEngine() {}
 
-ContourDetectEngine::~ContourDetectEngine() {}
+RawContourDetectEngine::~RawContourDetectEngine() {}
 
 // ============================================================================
 // Contour Detection Methods
 // ============================================================================
 
-// Detect raw contours from output layer bitmap
-std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
+std::vector<std::vector<cv::Point>> RawContourDetectEngine::detectRawContours(
     LayerImpl* outputLayer,
     OperationType opType,
     unsigned int currentGridWidth,
@@ -80,9 +97,6 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
     // ========================================================================
     // GPU-based contour pixel sorting for parallel contour tracing
     // ========================================================================
-    // Sort contour pixels by value to group same-valued pixels together
-    // This prepares the data for parallel contour tracing where each thread
-    // can process one group independently
     SortedContourPixels sortedPixels = sortContourPixelsByValue(
         contourLayer->d_bitmap,
         currentGridWidth,
@@ -119,16 +133,12 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
             currentGridHeight);
 
         std::cout << "GPU tracing found " << gpuContours.size() << " contours" << std::endl;
-
-        // Continue to also run OpenCV for comparison
-        // Don't return early - we'll compare both methods
     }
 
     // Ensure output bitmap is on host
     outputLayer->copyBitmapToHost();
 
     // Create binary image directly from outputLayer bitmap based on operation type
-    // This matches the correct implementation from the old code
     cv::Mat binaryImage(currentGridHeight, currentGridWidth, CV_8UC1);
     for (unsigned int y = 0; y < currentGridHeight; ++y) {
         for (unsigned int x = 0; x < currentGridWidth; ++x) {
@@ -234,7 +244,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
         cv::Mat comparisonImage = cv::Mat::zeros(currentGridHeight, currentGridWidth, CV_8UC3);
 
         // Draw OpenCV contours in GREEN using polylines
-        cv::Scalar greenColor(0, 255, 0); // GREEN (BGR format)
+        cv::Scalar greenColor(0, 255, 0);
         for (size_t i = 0; i < contours.size(); ++i) {
             if (contours[i].size() > 1) {
                 cv::polylines(comparisonImage, contours[i], true, greenColor, 1, cv::LINE_8);
@@ -242,7 +252,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
         }
 
         // Draw GPU contours in RED using polylines (overlay on top)
-        cv::Scalar redColor(0, 0, 255); // RED (BGR format)
+        cv::Scalar redColor(0, 0, 255);
         for (size_t i = 0; i < gpuContours.size(); ++i) {
             if (gpuContours[i].size() > 1) {
                 cv::polylines(comparisonImage, gpuContours[i], true, redColor, 1, cv::LINE_8);
@@ -254,7 +264,6 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
         cv::imwrite(comparisonFilename, comparisonImage);
         std::cout << "  Saved comparison to: " << comparisonFilename << std::endl;
         std::cout << "  Color legend: GREEN=OpenCV contours (bottom), RED=GPU contours (overlay on top)" << std::endl;
-        std::cout << "  Note: If GREEN is visible, GPU is missing that part" << std::endl;
 
         // Create reverse order comparison image (GPU first, CPU on top)
         cv::Mat reverseComparisonImage = cv::Mat::zeros(currentGridHeight, currentGridWidth, CV_8UC3);
@@ -277,385 +286,18 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::detectRawContours(
         std::string reverseComparisonFilename = "contour_comparison_intersection_gpu_cpu.png";
         cv::imwrite(reverseComparisonFilename, reverseComparisonImage);
         std::cout << "  Saved reverse comparison to: " << reverseComparisonFilename << std::endl;
-        std::cout << "  Color legend: RED=GPU contours (bottom), GREEN=OpenCV contours (overlay on top)" << std::endl;
-        std::cout << "  Note: If RED is visible, OpenCV is missing that part" << std::endl;
 
-        // Return GPU contours for INTERSECTION since that's the new implementation
-     //   return gpuContours;
         return contours;
     }
 
     return contours;
 }
 
-std::vector<std::vector<cv::Point>> ContourDetectEngine::simplifyContoursWithGeometry(
-    const std::vector<std::vector<cv::Point>>& raw_contours,
-    LayerImpl* subjectLayer,
-    LayerImpl* clipperLayer,
-    LayerImpl* outputLayer,
-    const std::map<std::pair<unsigned int, unsigned int>, std::set<IntersectionPoint>>& intersection_points_set,
-    OperationType opType,
-        unsigned int currentGridWidth,
-        unsigned int currentGridHeight) {
-    
-    std::vector<std::vector<cv::Point>> simplified_contours;
-    
-    if (!outputLayer || !subjectLayer || !clipperLayer) {
-        return simplified_contours;
-    }
-    
-    // Ensure bitmap is on host
-    outputLayer->copyBitmapToHost();
-
-    // ========================================================================
-    // Visualization: Subject, Clipper, Raw Contours, and Intersection Points
-    // ========================================================================
-    cv::Mat debugImage = cv::Mat::zeros(currentGridHeight, currentGridWidth, CV_8UC3);
-
-    // Layer 1 (bottom): Draw subject layer polygons in BLUE (line width 1)
-    cv::Scalar blueColor(255, 0, 0);  // BGR format
-    for (unsigned int polyIdx = 0; polyIdx < subjectLayer->polygonCount; ++polyIdx) {
-        unsigned int start = subjectLayer->h_startIndices[polyIdx];
-        unsigned int count = subjectLayer->h_ptCounts[polyIdx];
-
-        std::vector<cv::Point> polyPoints;
-        for (unsigned int i = 0; i < count; ++i) {
-            uint2 v = subjectLayer->h_vertices[start + i];
-            polyPoints.push_back(cv::Point(v.x, v.y));
-        }
-        if (polyPoints.size() > 1) {
-            cv::polylines(debugImage, polyPoints, true, blueColor, 1, cv::LINE_8);
-
-            // Add polygon ID label in blue at first vertex
-            std::string label = "S" + std::to_string(polyIdx);
-            cv::Point labelPos(polyPoints[0].x + 3, polyPoints[0].y - 3);
-            cv::putText(debugImage, label, labelPos, cv::FONT_HERSHEY_SIMPLEX, 0.3,
-                       blueColor, 1, cv::LINE_AA);
-        }
-    }
-
-    // Layer 2: Draw clipper layer polygons in RED (line width 1)
-    cv::Scalar redColor(0, 0, 255);  // BGR format
-    for (unsigned int polyIdx = 0; polyIdx < clipperLayer->polygonCount; ++polyIdx) {
-        unsigned int start = clipperLayer->h_startIndices[polyIdx];
-        unsigned int count = clipperLayer->h_ptCounts[polyIdx];
-
-        std::vector<cv::Point> polyPoints;
-        for (unsigned int i = 0; i < count; ++i) {
-            uint2 v = clipperLayer->h_vertices[start + i];
-            polyPoints.push_back(cv::Point(v.x, v.y));
-        }
-        if (polyPoints.size() > 1) {
-            cv::polylines(debugImage, polyPoints, true, redColor, 1, cv::LINE_8);
-
-            // Add polygon ID label in red at first vertex
-            std::string label = "C" + std::to_string(polyIdx);
-            cv::Point labelPos(polyPoints[0].x + 3, polyPoints[0].y - 3);
-            cv::putText(debugImage, label, labelPos, cv::FONT_HERSHEY_SIMPLEX, 0.3,
-                       redColor, 1, cv::LINE_AA);
-        }
-    }
-
-    // Layer 3: Draw raw contour pixels in GREEN (pixel size 1)
-    cv::Scalar greenColor(0, 255, 0);  // BGR format
-    for (const auto& contour : raw_contours) {
-        for (const auto& pt : contour) {
-            if (pt.x >= 0 && pt.x < static_cast<int>(currentGridWidth) &&
-                pt.y >= 0 && pt.y < static_cast<int>(currentGridHeight)) {
-                debugImage.at<cv::Vec3b>(pt.y, pt.x) = cv::Vec3b(0, 255, 0);  // Green pixel
-            }
-        }
-    }
-
-    // Layer 4 (top): Draw intersection points in YELLOW (circle size 2)
-    cv::Scalar yellowColor(0, 255, 255);  // BGR format
-    for (const auto& pair_entry : intersection_points_set) {
-        for (const auto& int_pt : pair_entry.second) {
-            cv::Point center(int_pt.x, int_pt.y);
-            if (center.x >= 0 && center.x < static_cast<int>(currentGridWidth) &&
-                center.y >= 0 && center.y < static_cast<int>(currentGridHeight)) {
-                cv::circle(debugImage, center, 2, yellowColor, -1, cv::LINE_AA);
-            }
-        }
-    }
-
-    // Add grid and axis labels
-    cv::Scalar gridColor(50, 50, 50);  // Dark gray grid
-    cv::Scalar axisColor(150, 150, 150);  // Light gray for axis labels
-
-    // Draw vertical grid lines every 200 pixels
-    for (unsigned int x = 0; x <= currentGridWidth; x += 200) {
-        cv::line(debugImage, cv::Point(x, 0), cv::Point(x, currentGridHeight - 1), gridColor, 1);
-
-        // Add X-axis label
-        if (x > 0) {
-            std::string label = std::to_string(x);
-            cv::putText(debugImage, label, cv::Point(x - 15, 15),
-                       cv::FONT_HERSHEY_SIMPLEX, 0.4, axisColor, 1, cv::LINE_AA);
-        }
-    }
-
-    // Draw horizontal grid lines every 200 pixels
-    for (unsigned int y = 0; y <= currentGridHeight; y += 200) {
-        cv::line(debugImage, cv::Point(0, y), cv::Point(currentGridWidth - 1, y), gridColor, 1);
-
-        // Add Y-axis label
-        if (y > 0) {
-            std::string label = std::to_string(y);
-            cv::putText(debugImage, label, cv::Point(5, y + 5),
-                       cv::FONT_HERSHEY_SIMPLEX, 0.4, axisColor, 1, cv::LINE_AA);
-        }
-    }
-
-    // Save the debug visualization
-    cv::imwrite("simplification_debug_layers.png", debugImage);
-    std::cout << "Saved simplification debug visualization: simplification_debug_layers.png" << std::endl;
-    std::cout << "  Layers (bottom to top): BLUE=Subject, RED=Clipper, GREEN=Raw contours, YELLOW=Intersection points" << std::endl;
-    std::cout << "  Grid: 200x200 pixels with axis labels" << std::endl;
-    // ========================================================================
-
-    // Process each contour using the exact algorithm from main.cu (lines 1283-1624)
-    for (size_t contour_idx = 0; contour_idx < raw_contours.size(); ++contour_idx) {
-        const auto& contour = raw_contours[contour_idx];
-        if (contour.size() < 3) {
-            continue;
-        }
-        
-        // Determine which polygons this contour belongs to
-        std::set<unsigned int> subject_ids;
-        std::set<unsigned int> clipper_ids;
-
-        // Sample points from the contour to determine associated polygon IDs
-        for (size_t pt_idx = 0; pt_idx < contour.size(); ++pt_idx) {
-            const cv::Point& pt = contour[pt_idx];
-
-            // Check bounds
-            if (pt.x >= 0 && pt.x < currentGridWidth && pt.y >= 0 && pt.y < currentGridHeight) {
-                unsigned int pixel_idx = pt.y * currentGridWidth + pt.x;
-                unsigned int pixel_value = outputLayer->h_bitmap[pixel_idx];
-
-                if (pixel_value > 0) {
-                    // Extract subject and clipper IDs from pixel value
-                    unsigned int clipper_id = (pixel_value >> 16) & 0xFFFF; // Upper 16 bits
-                    unsigned int subject_id = pixel_value & 0xFFFF;         // Lower 16 bits
-
-                    if (subject_id > 0) {
-                        subject_ids.insert(subject_id);
-                    }
-                    if (clipper_id > 0) {
-                        clipper_ids.insert(clipper_id);
-                    }
-                }
-
-                // For DIFFERENCE operation, also check 4-neighbors to capture clipper polygon info
-                // because clipper edges might not be captured at the exact contour boundary
-                if (opType == OperationType::DIFFERENCE) {
-                    // Define 4-neighbor offsets: left, right, up, down
-                    int dx[] = {-1, 1, 0, 0};
-                    int dy[] = {0, 0, -1, 1};
-
-                    for (int dir = 0; dir < 4; ++dir) {
-                        int nx = pt.x + dx[dir];
-                        int ny = pt.y + dy[dir];
-
-                        // Check if neighbor is within bounds
-                        if (nx >= 0 && nx < currentGridWidth && ny >= 0 && ny < currentGridHeight) {
-                            unsigned int neighbor_idx = ny * currentGridWidth + nx;
-                            unsigned int neighbor_value = outputLayer->h_bitmap[neighbor_idx];
-
-                            if (neighbor_value > 0) {
-                                unsigned int neighbor_clipper_id = (neighbor_value >> 16) & 0xFFFF;
-                                unsigned int neighbor_subject_id = neighbor_value & 0xFFFF;
-
-                                if (neighbor_subject_id > 0) {
-                                    subject_ids.insert(neighbor_subject_id);
-                                }
-                                if (neighbor_clipper_id > 0) {
-                                    clipper_ids.insert(neighbor_clipper_id);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Create a map from a contour point index to an intersection point or subject/clipper vertex
-        // In the end of simplification, we will only keep contour points that are in this map
-        std::map<size_t, std::pair<unsigned int, unsigned int>> contour_to_candidate_map;
-        
-        // Handle intersection case: both subject and clipper IDs present
-        if (!subject_ids.empty() && !clipper_ids.empty()) {
-            // Create comprehensive point vector including:
-            // 1. All real intersection points from all possible subject-clipper pairs (with calculated thresholds)
-            // 2. All subject vertices from subject_ids (threshold = 1.5f)
-            // 3. All clipper vertices from clipper_ids (threshold = 1.5f)
-            std::vector<CandidatePoint> all_candidate_points;
-            
-            // Collect all real intersection points from all possible subject-clipper pairs
-            for (unsigned int subject_id : subject_ids) {
-                for (unsigned int clipper_id : clipper_ids) {
-                    auto pair_key = std::make_pair(subject_id, clipper_id);
-                    auto pair_it = intersection_points_set.find(pair_key);
-
-                    if (pair_it != intersection_points_set.end()) {
-                        const auto &intersection_points = pair_it->second;
-
-                        // Add all real intersection points with their calculated thresholds
-                        for (const auto &intersection_point : intersection_points) {
-                            all_candidate_points.emplace_back(
-                                intersection_point.x,
-                                intersection_point.y,
-                                intersection_point.max_distance_threshold
-                            );
-                        }
-                    }
-                }
-            }
-
-            int real_intersection_count = all_candidate_points.size();
-
-            // Collect all subject vertices with threshold 1.5f
-            for (unsigned int subject_id : subject_ids) {
-                if (subject_id > 0 && subject_id <= subjectLayer->polygonCount) {
-                    unsigned int start_idx = subjectLayer->h_startIndices[subject_id - 1]; // Convert to 0-based
-                    unsigned int vertex_count = subjectLayer->h_ptCounts[subject_id - 1];
-
-                    for (unsigned int v = 0; v < vertex_count; ++v) {
-                        unsigned int x = subjectLayer->h_vertices[start_idx + v].x;
-                        unsigned int y = subjectLayer->h_vertices[start_idx + v].y;
-                        all_candidate_points.emplace_back(x, y, 1.5f); // Subject vertex threshold
-                    }
-                }
-            }
-
-            // Collect all clipper vertices with threshold 1.5f
-            for (unsigned int clipper_id : clipper_ids) {
-                if (clipper_id > 0 && clipper_id <= clipperLayer->polygonCount) {
-                    unsigned int start_idx = clipperLayer->h_startIndices[clipper_id - 1]; // Convert to 0-based
-                    unsigned int vertex_count = clipperLayer->h_ptCounts[clipper_id - 1];
-
-                    for (unsigned int v = 0; v < vertex_count; ++v) {
-                        unsigned int x = clipperLayer->h_vertices[start_idx + v].x;
-                        unsigned int y = clipperLayer->h_vertices[start_idx + v].y;
-                        all_candidate_points.emplace_back(x, y, 1.5f); // Clipper vertex threshold
-                    }
-                }
-            }
-
-            // Increase all max distance thresholds by 0.6f to allow more flexible matching for XOR operation
-            if (opType == OperationType::XOR) {
-                for (auto &candidate_pt : all_candidate_points) {
-                    candidate_pt.max_distance_threshold += 0.6f;
-                }
-            }
-
-            // Create a vector to track which candidate points are matched to contour points
-            std::vector<bool> candidate_point_matched(all_candidate_points.size(), false);
-
-            // Unified matching stage: iterate through increasing distance thresholds
-            // For each candidate point, try to match it with contour points using progressively larger thresholds
-            for (size_t pt_idx = 0; pt_idx < all_candidate_points.size(); ++pt_idx) {
-                if (candidate_point_matched[pt_idx])
-                    continue;
-
-                const auto &candidate_pt = all_candidate_points[pt_idx];
-                float max_distance_threshold = candidate_pt.max_distance_threshold;
-
-                // Iterate through threshold levels from 0 to max_distance_threshold
-                // Use step size of 0.6f to cover: 0, 0.6, 1.2, 1.8, 2.4, ... up to max
-                for (float threshold = 0.0f; threshold <= max_distance_threshold; threshold += 0.6f) {
-                    if (candidate_point_matched[pt_idx])
-                        break; // Already matched at a smaller threshold
-                    
-                    for (size_t i = 0; i < contour.size(); ++i) {
-                        // Skip if this contour point is already mapped
-                        if (contour_to_candidate_map.find(i) != contour_to_candidate_map.end())
-                            continue;
-
-                        const cv::Point &contour_pt = contour[i];
-
-                        // Calculate Euclidean distance
-                        float dx = static_cast<float>(contour_pt.x) - static_cast<float>(candidate_pt.x);
-                        float dy = static_cast<float>(contour_pt.y) - static_cast<float>(candidate_pt.y);
-                        float distance = std::sqrt(dx * dx + dy * dy);
-
-                        // Check if distance is within current threshold
-                        if (distance <= threshold) {
-                            contour_to_candidate_map[i] = std::make_pair(candidate_pt.x, candidate_pt.y);
-                            candidate_point_matched[pt_idx] = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // Build simplified contour from mapped points
-            std::vector<cv::Point> filtered_contour;
-            for (size_t i = 0; i < contour.size(); ++i) {
-                auto map_it = contour_to_candidate_map.find(i);
-                if (map_it != contour_to_candidate_map.end()) {
-                    // Use the intersection point coordinates instead of contour point
-                    const auto &intersection_pt = map_it->second;
-                    filtered_contour.push_back(cv::Point(
-                        static_cast<int>(intersection_pt.first),
-                        static_cast<int>(intersection_pt.second)));
-                }
-            }
-
-            if (filtered_contour.size() > 2) {
-                simplified_contours.push_back(std::move(filtered_contour));
-            }
-        }
-        // Handle pure subject or pure clipper cases (unchanged from original)
-        else if (subject_ids.empty() && !clipper_ids.empty()) {
-            // Pure clipper polygon - use clipper vertices directly
-            unsigned int clipper_id = *clipper_ids.begin() - 1;
-            if (clipper_id < clipperLayer->polygonCount) {
-                unsigned int start = clipperLayer->h_startIndices[clipper_id];
-                unsigned int count = clipperLayer->h_ptCounts[clipper_id];
-                
-                std::vector<cv::Point> vertices;
-                for (unsigned int i = 0; i < count; ++i) {
-                    vertices.emplace_back(
-                        clipperLayer->h_vertices[start + i].x,
-                        clipperLayer->h_vertices[start + i].y
-                    );
-                }
-                if (vertices.size() > 2) {
-                    simplified_contours.push_back(std::move(vertices));
-                }
-            }
-        }
-        else if (!subject_ids.empty() && clipper_ids.empty()) {
-            // Pure subject polygon - use subject vertices directly
-            unsigned int subject_id = *subject_ids.begin() - 1;
-            if (subject_id < subjectLayer->polygonCount) {
-                unsigned int start = subjectLayer->h_startIndices[subject_id];
-                unsigned int count = subjectLayer->h_ptCounts[subject_id];
-                
-                std::vector<cv::Point> vertices;
-                for (unsigned int i = 0; i < count; ++i) {
-                    vertices.emplace_back(
-                        subjectLayer->h_vertices[start + i].x,
-                        subjectLayer->h_vertices[start + i].y
-                    );
-                }
-                if (vertices.size() > 2) {
-                    simplified_contours.push_back(std::move(vertices));
-                }
-            }
-        }
-    }
-    
-    return simplified_contours;
-}
-
 // ============================================================================
 // GPU Contour Pixel Sorting Implementation
 // ============================================================================
 
-SortedContourPixels ContourDetectEngine::sortContourPixelsByValue(
+SortedContourPixels RawContourDetectEngine::sortContourPixelsByValue(
     const unsigned int* contourBitmap,
     unsigned int width,
     unsigned int height) {
@@ -676,7 +318,6 @@ SortedContourPixels ContourDetectEngine::sortContourPixelsByValue(
         d_values.begin());
 
     // Step 3: Remove elements where bitmap value is 0
-    // We'll use remove_if with a custom predicate
     auto new_end = thrust::remove_if(
         thrust::make_zip_iterator(thrust::make_tuple(d_values.begin(), d_indices.begin())),
         thrust::make_zip_iterator(thrust::make_tuple(d_values.end(), d_indices.end())),
@@ -708,7 +349,7 @@ SortedContourPixels ContourDetectEngine::sortContourPixelsByValue(
 // GPU Contour Tracing Implementation
 // ============================================================================
 
-std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
+std::vector<std::vector<cv::Point>> RawContourDetectEngine::traceContoursGPU(
     const SortedContourPixels& sortedPixels,
     const unsigned int* contourBitmap,
     const unsigned int* overlayBitmap,
@@ -721,9 +362,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
         return contours;
     }
 
-    // Step 1: Identify groups (consecutive pixels with same value) using CUB Run-Length Encode
-    // OPTIMIZATION: Use CUB DeviceRunLengthEncode instead of Thrust reduce_by_key
-    // This is simpler, more efficient, and purpose-built for exactly this use case
+    // Step 1: Identify groups using CUB Run-Length Encode
     thrust::device_vector<unsigned int> d_unique_values(sortedPixels.count);
     thrust::device_vector<unsigned int> d_group_counts(sortedPixels.count);
     thrust::device_vector<unsigned int> d_num_runs(1);
@@ -742,7 +381,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
     // Allocate temporary storage
     CHECK_GPU_ERROR(gpuMalloc(&d_temp_storage, temp_storage_bytes));
 
-    // Run encoding: [1,1,1,2,2,3] -> unique=[1,2,3], counts=[3,2,1], num_runs=3
+    // Run encoding
     cub::DeviceRunLengthEncode::Encode(
         d_temp_storage, temp_storage_bytes,
         thrust::raw_pointer_cast(sortedPixels.values.data()),
@@ -751,7 +390,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
         thrust::raw_pointer_cast(d_num_runs.data()),
         sortedPixels.count);
 
-    // Get number of groups (copy single int from device)
+    // Get number of groups
     unsigned int numGroups;
     CHECK_GPU_ERROR(gpuMemcpy(&numGroups, thrust::raw_pointer_cast(d_num_runs.data()),
                               sizeof(unsigned int), gpuMemcpyDeviceToHost));
@@ -768,17 +407,11 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
     d_unique_values.resize(numGroups);
     d_group_counts.resize(numGroups);
 
-    // Step 2: Compute start indices using exclusive scan of group counts
-    // Using separate pointer representation instead of GroupInfo struct
+    // Step 2: Compute start indices using exclusive scan
     thrust::device_vector<unsigned int> d_group_starts(numGroups);
     thrust::exclusive_scan(d_group_counts.begin(), d_group_counts.end(), d_group_starts.begin());
 
-    // Now we have three separate arrays for group data:
-    // - d_unique_values: pixel values for each group
-    // - d_group_starts: starting index in sorted arrays for each group
-    // - d_group_counts: number of pixels in each group
-
-    // Step 3: Allocate visited array (one flag per sorted pixel)
+    // Step 3: Allocate visited array
     thrust::device_vector<unsigned char> d_visited(sortedPixels.count, 0);
 
     // Step 4: Allocate output arrays
@@ -787,7 +420,7 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
     thrust::device_vector<uint2> d_outputContours(numGroups * maxPointsPerContour);
     thrust::device_vector<unsigned int> d_outputCounts(numGroups, 0);
 
-    // Allocate separate arrays for polygon IDs (instead of ContourPolygonIDs struct)
+    // Allocate separate arrays for polygon IDs
     thrust::device_vector<unsigned int> d_subject_ids(numGroups * maxIDsPerGroup);
     thrust::device_vector<unsigned int> d_clipper_ids(numGroups * maxIDsPerGroup);
     thrust::device_vector<unsigned int> d_subject_counts(numGroups, 0);
@@ -796,7 +429,6 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
     // ========== DEBUG: Visualize Group 11 contour pixels ==========
     const unsigned int DEBUG_GROUP = 11;
     if (DEBUG_GROUP < numGroups) {
-        // Copy data to host
         thrust::host_vector<unsigned int> h_group_starts = d_group_starts;
         thrust::host_vector<unsigned int> h_group_counts = d_group_counts;
         thrust::host_vector<unsigned int> h_unique_values = d_unique_values;
@@ -860,7 +492,6 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
             cv::line(visImage, cv::Point(imgX, 0), cv::Point(imgX, regionHeight * scale - 1),
                     cv::Scalar(50, 50, 50), 1);
 
-            // X-axis labels every 5 pixels
             if (x % 5 == 0 && x < regionWidth) {
                 std::string label = std::to_string(minX + x);
                 cv::putText(visImage, label, cv::Point(imgX + 2, 12),
@@ -872,7 +503,6 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
             cv::line(visImage, cv::Point(0, imgY), cv::Point(regionWidth * scale - 1, imgY),
                     cv::Scalar(50, 50, 50), 1);
 
-            // Y-axis labels every 5 pixels
             if (y % 5 == 0 && y < regionHeight) {
                 std::string label = std::to_string(minY + y);
                 cv::putText(visImage, label, cv::Point(2, imgY + 12),
@@ -884,13 +514,11 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
         cv::imwrite(filename, visImage);
         std::cout << "  Saved contour pixel visualization: " << filename << std::endl;
     }
-    // ========== END DEBUG VISUALIZATION ==========
 
-    // Step 5: Launch tracing kernel (one block per group)
-    dim3 blockSize(1, 1, 1); // Using single thread per block for now
+    // Step 5: Launch tracing kernel
+    dim3 blockSize(1, 1, 1);
     dim3 gridSize(numGroups, 1, 1);
 
-    // Time the traceContoursParallel kernel
     gpuEvent_t traceStart, traceStop;
     gpuEventCreate(&traceStart);
     gpuEventCreate(&traceStop);
@@ -936,7 +564,6 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
     thrust::host_vector<unsigned int> h_clipper_counts = d_clipper_counts;
 
     // Step 7: Convert to cv::Point format and print polygon IDs
-    // Parse contours with delimiter markers (x=0xFFFFFFFF, y=pixel_count)
     for (unsigned int g = 0; g < numGroups; ++g) {
         unsigned int totalCount = h_outputCounts[g];
         if (totalCount > 0) {
@@ -945,37 +572,31 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
             unsigned int contourInGroup = 0;
 
             while (i < totalCount) {
-                // Determine contour length
                 unsigned int contourLen = 0;
                 unsigned int startIdx = i;
 
                 if (contourInGroup == 0) {
-                    // First contour: find length by scanning until marker or end
                     while (i < totalCount) {
                         uint2 pt = h_outputContours[baseIdx + i];
                         if (pt.x == 0xFFFFFFFF) {
-                            // Found marker for next contour
                             break;
                         }
                         i++;
                     }
                     contourLen = i - startIdx;
                 } else {
-                    // Subsequent contours: current position should be at marker
                     uint2 marker = h_outputContours[baseIdx + i];
                     if (marker.x == 0xFFFFFFFF) {
                         contourLen = marker.y;
-                        i++; // Skip marker
+                        i++;
                         startIdx = i;
-                        i += contourLen; // Move past contour points
+                        i += contourLen;
                     } else {
-                        // Unexpected: not a marker, skip
                         i++;
                         continue;
                     }
                 }
 
-                // Extract contour points
                 if (contourLen > 0) {
                     std::vector<cv::Point> contour;
                     contour.reserve(contourLen);
@@ -987,7 +608,6 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
 
                     contours.push_back(std::move(contour));
 
-                    // Print collected polygon IDs for this contour
                     unsigned int subjectCount = h_subject_counts[g];
                     unsigned int clipperCount = h_clipper_counts[g];
                     std::cout << "  Group " << g << " Contour " << contourInGroup
@@ -1012,14 +632,10 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
 
     std::cout << "GPU tracing complete: extracted " << contours.size() << " contours" << std::endl;
 
-    // ========== VISUALIZATION: Save GPU contour plot ==========
-    // Create blank image for visualization
+    // ========== VISUALIZATION ==========
     cv::Mat visImage = cv::Mat::zeros(height, width, CV_8UC3);
-
-    // Copy unique values to host for group ID lookup
     thrust::host_vector<unsigned int> h_unique_values(d_unique_values);
 
-    // Draw each contour with color based on group ID
     unsigned int contourIdx = 0;
     for (unsigned int g = 0; g < numGroups; ++g) {
         unsigned int totalCount = h_outputCounts[g];
@@ -1028,50 +644,42 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
             unsigned int i = 0;
             unsigned int contourInGroup = 0;
 
-            // Determine color based on group ID
             cv::Scalar color;
             if (g < 100) {
-                color = cv::Scalar(0, 0, 255); // Red (BGR format)
+                color = cv::Scalar(0, 0, 255);
             } else if (g < 200) {
-                color = cv::Scalar(0, 255, 0); // Green
+                color = cv::Scalar(0, 255, 0);
             } else {
-                color = cv::Scalar(255, 0, 0); // Blue
+                color = cv::Scalar(255, 0, 0);
             }
 
             while (i < totalCount) {
-                // Determine contour length
                 unsigned int contourLen = 0;
                 unsigned int startIdx = i;
 
                 if (contourInGroup == 0) {
-                    // First contour: find length by scanning until marker or end
                     while (i < totalCount) {
                         uint2 pt = h_outputContours[baseIdx + i];
                         if (pt.x == 0xFFFFFFFF) {
-                            // Found marker for next contour
                             break;
                         }
                         i++;
                     }
                     contourLen = i - startIdx;
                 } else {
-                    // Subsequent contours: current position should be at marker
                     uint2 marker = h_outputContours[baseIdx + i];
                     if (marker.x == 0xFFFFFFFF) {
                         contourLen = marker.y;
-                        i++; // Skip marker
+                        i++;
                         startIdx = i;
-                        i += contourLen; // Move past contour points
+                        i += contourLen;
                     } else {
-                        // Unexpected: not a marker, skip
                         i++;
                         continue;
                     }
                 }
 
-                // Draw contour if it has points
                 if (contourLen > 0) {
-                    // Draw lines connecting the contour points
                     for (unsigned int j = 0; j < contourLen; ++j) {
                         uint2 pt1 = h_outputContours[baseIdx + startIdx + j];
                         uint2 pt2 = h_outputContours[baseIdx + startIdx + ((j + 1) % contourLen)];
@@ -1081,19 +689,15 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
                         cv::line(visImage, p1, p2, color, 1, cv::LINE_AA);
                     }
 
-                    // Decompose group value to get subject_id and clipper_id
                     unsigned int groupValue = h_unique_values[g];
-                    unsigned int subject_id = (groupValue & 0xFFFF) - 1; // Lower 16 bits, subtract 1
-                    unsigned int clipper_id = ((groupValue >> 16) & 0xFFFF) - 1; // Upper 16 bits, subtract 1
+                    unsigned int subject_id = (groupValue & 0xFFFF) - 1;
+                    unsigned int clipper_id = ((groupValue >> 16) & 0xFFFF) - 1;
 
-                    // Get first point for label placement
                     uint2 firstPt = h_outputContours[baseIdx + startIdx];
-                    cv::Point labelPos(firstPt.x + 5, firstPt.y - 5); // Offset slightly from point
+                    cv::Point labelPos(firstPt.x + 5, firstPt.y - 5);
 
-                    // Create label text
                     std::string label = "(" + std::to_string(subject_id) + "," + std::to_string(clipper_id) + ")";
 
-                    // Draw label without background (transparent)
                     cv::putText(visImage, label, labelPos, cv::FONT_HERSHEY_SIMPLEX, 0.3,
                                 cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
@@ -1105,13 +709,9 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
         }
     }
 
-    // Save visualization
     std::string outputFilename = "gpu_contour_tracing_visualization.png";
     cv::imwrite(outputFilename, visImage);
     std::cout << "Saved GPU contour visualization to: " << outputFilename << std::endl;
-    std::cout << "  Color coding: RED (groups 0-99), GREEN (groups 100-199), BLUE (groups 200+)" << std::endl;
-    std::cout << "  Labels show (subject_id, clipper_id) at first point of each contour" << std::endl;
-    // ========== END VISUALIZATION ==========
 
     return contours;
 }
@@ -1120,7 +720,6 @@ std::vector<std::vector<cv::Point>> ContourDetectEngine::traceContoursGPU(
 // GPU Kernels for Contour Detection and Tracing
 // ============================================================================
 
-// Extract contour pixels from overlay bitmap
 __global__ void extractContours_kernel(
     const unsigned int* inputBitmap,
     unsigned int* contourBitmap,
@@ -1191,7 +790,6 @@ __global__ void extractContours_kernel(
         return;
     }
 
-    // Check if pixel is contour (has non-ROI neighbors using 4-connectivity)
     if (s_isContourPixel[threadIdx.y][threadIdx.x] > 0) {
         if ((s_isContourPixel[threadIdx.y - 1][threadIdx.x] == 0) ||
             (s_isContourPixel[threadIdx.y][threadIdx.x - 1] == 0) ||
@@ -1204,64 +802,9 @@ __global__ void extractContours_kernel(
 }
 
 // ============================================================================
-// Contour Tracing Kernel (Suzuki-Abe Algorithm) with Polygon ID Collection
-// ============================================================================
-//
-// GPU-BASED CONTOUR SIMPLIFICATION ALGORITHM OVERVIEW
-// =====================================================
-//
-// Context:
-// --------
-// For INTERSECTION operations, the overlay bitmap stores both subject and clipper
-// polygon IDs in each pixel value:
-//   - Lower 16 bits: Subject polygon ID
-//   - Upper 16 bits: Clipper polygon ID
-//
-// The raw contour pixels (extracted by extractContours_kernel) contain pixels that
-// belong to one or more subject/clipper polygon pairs. To simplify these raw contours,
-// we need to:
-//   1. Collect all subject and clipper IDs associated with each raw contour
-//   2. Use these IDs to fetch relevant intersection points and polygon vertices
-//   3. Match raw contour pixels to these geometrically significant points
-//
-// ID Collection During Tracing:
-// -----------------------------
-// During the traceOneContour() function, as we trace each pixel of a raw contour,
-// we extract and collect the subject_id and clipper_id from the overlay bitmap pixel value.
-//
-// We maintain two small buffers (max 256 entries each) for unique IDs:
-//   - subject_ids[256]: Stores unique subject polygon IDs
-//   - clipper_ids[256]: Stores unique clipper polygon IDs
-//   - subject_count: Number of unique subject IDs collected
-//   - clipper_count: Number of unique clipper IDs collected
-//
-// As we trace, for each pixel:
-//   1. Read pixel value from overlay bitmap (NOT contour bitmap)
-//   2. Extract subject_id = pixel_value & 0xFFFF
-//   3. Extract clipper_id = (pixel_value >> 16) & 0xFFFF
-//   4. If subject_id > 0 and not already in buffer, add to subject_ids[]
-//   5. If clipper_id > 0 and not already in buffer, add to clipper_ids[]
-//
-// Why This Works:
-// ---------------
-// - Contour pixels represent boundaries between intersecting regions
-// - A single contour may touch multiple subject/clipper polygon pairs
-// - Collecting ALL relevant IDs allows us to gather ALL candidate simplification points
-// - The 256-entry limit is reasonable: most contours touch only a few polygons
-//
-// Next Step (Contour Simplification - TO BE IMPLEMENTED):
-// -------------------------------------------------------
-// After collecting IDs, we will:
-//   1. For each subject_id + clipper_id pair, fetch intersection points from d_intersection_points
-//   2. For each subject_id, fetch polygon vertices from subject layer
-//   3. For each clipper_id, fetch polygon vertices from clipper layer
-//   4. Create candidate point list with distance thresholds
-//   5. Match raw contour pixels to candidate points
-//   6. Keep only matched pixels as simplified contour
-//
+// Device Helper Functions
 // ============================================================================
 
-// Device helper: Get pixel at bitmap location
 __device__ inline unsigned int getBitmapPixel(
     const unsigned int* bitmap,
     int x, int y,
@@ -1274,7 +817,6 @@ __device__ inline unsigned int getBitmapPixel(
     return bitmap[y * width + x];
 }
 
-// Device helper: Find index in sortedIndices for a given bitmap index
 __device__ inline int findSortedIndex(
     const unsigned int* sortedIndices,
     unsigned int targetIdx,
@@ -1289,31 +831,30 @@ __device__ inline int findSortedIndex(
     return -1;
 }
 
-// Device helper: Add polygon ID to buffer if not already present
 __device__ inline void addPolygonID(
     unsigned int* idBuffer,
     unsigned int* idCount,
     unsigned int newID,
     unsigned int maxIDs)
 {
-    if (newID == 0) return; // Skip zero IDs
+    if (newID == 0) return;
 
-    // Check if ID already exists
     for (unsigned int i = 0; i < *idCount; ++i) {
         if (idBuffer[i] == newID) {
-            return; // Already in buffer
+            return;
         }
     }
 
-    // Add new ID if there's space
     if (*idCount < maxIDs) {
         idBuffer[*idCount] = newID;
         (*idCount)++;
     }
 }
 
-// Device function: Trace one contour using Suzuki-Abe 8-connectivity border following
-// with polygon ID collection for intersection simplification
+// ============================================================================
+// Device Function: Trace One Contour
+// ============================================================================
+
 __device__ void traceOneContour(
     const unsigned int* contourBitmap,
     const unsigned int* overlayBitmap,
@@ -1335,26 +876,21 @@ __device__ void traceOneContour(
     unsigned int groupIdx,
     unsigned int contourIdx)
 {
-    // Get starting pixel location
     unsigned int startIdx = sortedIndices[startSortedIdx];
     unsigned int startX = startIdx % width;
     unsigned int startY = startIdx / width;
 
-    // Debug output for group 11 only
     bool debug = (groupIdx == 11);
 
-    // Initialize polygon ID counts
     *subjectCount = 0;
     *clipperCount = 0;
 
-    // Direction vectors for 8-connectivity (E, SE, S, SW, W, NW, N, NE)
-    // Clockwise order starting from right (East)
     const int dx[8] = {1, 1, 0, -1, -1, -1, 0, 1};
     const int dy[8] = {0, 1, 1, 1, 0, -1, -1, -1};
 
     unsigned int currentX = startX;
     unsigned int currentY = startY;
-    int currentDir = 0; // Start looking right (East)
+    int currentDir = 0;
 
     unsigned int pointCount = 0;
 
@@ -1364,7 +900,6 @@ __device__ void traceOneContour(
         printf("contour_%u_%u = [\n", groupIdx, contourIdx);
     }
 
-    // Add starting point
     if (pointCount < maxPoints) {
         outputContour[pointCount].x = currentX;
         outputContour[pointCount].y = currentY;
@@ -1376,27 +911,22 @@ __device__ void traceOneContour(
         }
     }
 
-    // Collect polygon IDs from starting point
     unsigned int overlayValue = getBitmapPixel(overlayBitmap, currentX, currentY, width, height);
-    unsigned int subject_id = overlayValue & 0xFFFF;        // Lower 16 bits
-    unsigned int clipper_id = (overlayValue >> 16) & 0xFFFF; // Upper 16 bits
+    unsigned int subject_id = overlayValue & 0xFFFF;
+    unsigned int clipper_id = (overlayValue >> 16) & 0xFFFF;
     addPolygonID(subjectIDs, subjectCount, subject_id, 256);
     addPolygonID(clipperIDs, clipperCount, clipper_id, 256);
 
-    // Mark as visited
     visited[startSortedIdx] = 1;
 
-    // Border following loop
     bool firstMove = true;
     unsigned int iterCount = 0;
-    const unsigned int maxIter = width * height * 4; // Safety limit
+    const unsigned int maxIter = width * height * 4;
 
     while (iterCount < maxIter) {
         iterCount++;
 
-        // Search for next contour pixel in clockwise order
-        // For 8-connectivity, start from 2 positions counter-clockwise
-        int searchDir = (currentDir + 6) % 8; // Start searching counter-clockwise
+        int searchDir = (currentDir + 6) % 8;
         bool found = false;
 
         for (int i = 0; i < 8; ++i) {
@@ -1404,35 +934,29 @@ __device__ void traceOneContour(
             int nextX = currentX + dx[checkDir];
             int nextY = currentY + dy[checkDir];
 
-            // Check if this pixel is part of the contour
             unsigned int pixelValue = getBitmapPixel(
                 contourBitmap, nextX, nextY, width, height);
 
             if (pixelValue == targetValue) {
-                // Check visited status BEFORE accepting this pixel
                 unsigned int nextIdx = nextY * width + nextX;
                 int sortedIdx = findSortedIndex(
                     sortedIndices, nextIdx, groupStart, groupCount);
                 bool wasVisited = (sortedIdx >= 0) ? (visited[sortedIdx] != 0) : false;
 
-                // Skip already-visited pixels (except when returning to start to close contour)
                 if (wasVisited && !(nextX == startX && nextY == startY)) {
                     if (debug) {
                         printf("# Skipping already-visited pixel (%d, %d) at direction %d\n",
                                nextX, nextY, checkDir);
                     }
-                    continue; // Skip this pixel and try next direction
+                    continue;
                 }
 
-                // Found next contour pixel (unvisited or returning to start)
                 currentX = nextX;
                 currentY = nextY;
                 currentDir = checkDir;
                 found = true;
 
-                // Check if we've returned to start
                 if (!firstMove && currentX == startX && currentY == startY) {
-                    // Closed contour
                     *outputCount = pointCount;
                     if (debug) {
                         printf("]\n# [Group %u, Contour %u] Closed contour with %u points\n\n",
@@ -1442,7 +966,6 @@ __device__ void traceOneContour(
                 }
                 firstMove = false;
 
-                // Add point to contour
                 if (pointCount < maxPoints) {
                     outputContour[pointCount].x = currentX;
                     outputContour[pointCount].y = currentY;
@@ -1453,14 +976,12 @@ __device__ void traceOneContour(
                     pointCount++;
                 }
 
-                // Collect polygon IDs from current point
                 unsigned int overlayValue = getBitmapPixel(overlayBitmap, currentX, currentY, width, height);
-                unsigned int subject_id = overlayValue & 0xFFFF;        // Lower 16 bits
-                unsigned int clipper_id = (overlayValue >> 16) & 0xFFFF; // Upper 16 bits
+                unsigned int subject_id = overlayValue & 0xFFFF;
+                unsigned int clipper_id = (overlayValue >> 16) & 0xFFFF;
                 addPolygonID(subjectIDs, subjectCount, subject_id, 256);
                 addPolygonID(clipperIDs, clipperCount, clipper_id, 256);
 
-                // Mark as visited
                 if (sortedIdx >= 0) {
                     visited[sortedIdx] = 1;
                 }
@@ -1470,25 +991,26 @@ __device__ void traceOneContour(
         }
 
         if (!found) {
-            // No neighbor found, end tracing
             if (debug) {
                 printf("]\n# [Group %u, Contour %u] No neighbor found, ending trace with %u points (OPEN contour)\n\n",
                        groupIdx, contourIdx, pointCount);
             }
             break;
         }
-    }// while (iterCount < maxIter)
+    }
 
     *outputCount = pointCount;
 
-    // If we exited the loop without printing the closing bracket (max iterations reached)
     if (debug && pointCount > 0 && iterCount >= maxIter) {
         printf("]\n# [Group %u, Contour %u] Max iterations reached, trace incomplete with %u points\n\n",
                groupIdx, contourIdx, pointCount);
     }
 }
 
-// Main kernel: Each block processes one group
+// ============================================================================
+// Main Kernel: Each Block Processes One Group
+// ============================================================================
+
 __global__ void traceContoursParallel_kernel(
     const unsigned int* contourBitmap,
     const unsigned int* overlayBitmap,
@@ -1515,47 +1037,36 @@ __global__ void traceContoursParallel_kernel(
         return;
     }
 
-    // Get group info from separate arrays
     unsigned int targetValue = groupPixelValues[groupIdx];
     unsigned int groupStart = groupStartIndices[groupIdx];
     unsigned int groupCount = groupCounts[groupIdx];
 
-    // Each thread in the block tries to find an unvisited pixel to start tracing
-    // This handles multiple disjoint contours within the same group
     unsigned int contourCount = 0;
-    const unsigned int maxContoursPerGroup = 32; // Safety limit
+    const unsigned int maxContoursPerGroup = 32;
     const unsigned int maxIDsPerGroup = 256;
 
-    // Allocate shared memory for polygon ID collection
     __shared__ unsigned int sharedSubjectIDs[256];
     __shared__ unsigned int sharedClipperIDs[256];
     __shared__ unsigned int sharedSubjectCount;
     __shared__ unsigned int sharedClipperCount;
 
-    // Only thread 0 does the tracing (serial within block for now)
     if (threadIdx.x == 0) {
-        // Scan through all pixels in this group
         for (unsigned int i = 0; i < groupCount && contourCount < maxContoursPerGroup; ++i) {
             unsigned int sortedIdx = groupStart + i;
 
-            // Check if already visited
             if (visited[sortedIdx] == 0) {
-                // Start a new contour from this pixel
                 unsigned int localCount = 0;
                 uint2* contourOutput = outputContours + groupIdx * maxPointsPerContour;
                 unsigned int currentOffset = outputCounts[groupIdx];
 
-                // For second and subsequent contours, add a delimiter marker first
-                // Marker format: x = 0xFFFFFFFF, y = will be filled with pixel count after tracing
                 unsigned int markerIdx = 0;
                 if (contourCount > 0) {
-                    // Check if we have space for marker
                     if (currentOffset >= maxPointsPerContour - 1) {
-                        break; // No space left
+                        break;
                     }
                     markerIdx = currentOffset;
                     contourOutput[currentOffset].x = 0xFFFFFFFF;
-                    contourOutput[currentOffset].y = 0; // Will be updated after tracing
+                    contourOutput[currentOffset].y = 0;
                     currentOffset++;
                     outputCounts[groupIdx]++;
                 }
@@ -1581,10 +1092,7 @@ __global__ void traceContoursParallel_kernel(
                     groupIdx,
                     contourCount);
 
-                // Store the collected polygon IDs for this group
-                // For now, each group gets one set of IDs (could be refined later)
                 if (contourCount == 0) {
-                    // First contour: copy shared memory IDs to global memory
                     for (unsigned int j = 0; j < sharedSubjectCount && j < maxIDsPerGroup; ++j) {
                         outputSubjectIDs[groupIdx * maxIDsPerGroup + j] = sharedSubjectIDs[j];
                     }
@@ -1594,7 +1102,6 @@ __global__ void traceContoursParallel_kernel(
                     outputSubjectCounts[groupIdx] = sharedSubjectCount;
                     outputClipperCounts[groupIdx] = sharedClipperCount;
                 } else {
-                    // For subsequent contours, update the marker's y value with pixel count
                     contourOutput[markerIdx].y = localCount;
                 }
 

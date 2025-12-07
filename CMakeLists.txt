@@ -60,7 +60,8 @@ set(LIBRARY_SOURCES
     src/LayerImpl.cu
     src/GpuOperations.cu
     src/IntersectionCompute.cu
-    src/ContourProcessing.cu
+    src/RawContourDetectEngine.cu
+    src/SimplifyContourEngine.cu
     src/GpuLithoLib.cu
     src/operation_types.cu
     src/GpuKernelProfiler.cu

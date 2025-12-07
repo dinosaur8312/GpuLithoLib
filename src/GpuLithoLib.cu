@@ -2,7 +2,8 @@
 #include "LayerImpl.h"
 #include "GpuOperations.cuh"
 #include "IntersectionCompute.cuh"
-#include "ContourProcessing.cuh"
+#include "RawContourDetectEngine.cuh"
+#include "SimplifyContourEngine.cuh"
 #include "GpuKernelProfiler.cuh"
 #include <opencv2/opencv.hpp>
 #include <iostream>
@@ -125,8 +126,11 @@ public:
     // Intersection computation engine (persistent GPU memory)
     IntersectionComputeEngine intersectionEngine;
 
-    // Contour detection and simplification engine
-    ContourDetectEngine contourEngine;
+    // Raw contour detection engine
+    RawContourDetectEngine rawContourEngine;
+
+    // Contour simplification engine
+    SimplifyContourEngine simplifyEngine;
 
     // GPU kernel profiler
     GpuKernelProfiler kernelProfiler;
@@ -779,7 +783,7 @@ public:
             currentGridWidth, currentGridHeight);
         
         // Step 4: Detect raw contours
-        auto raw_contours = contourEngine.detectRawContours(output.get(), opType, currentGridWidth, currentGridHeight);
+        auto raw_contours = rawContourEngine.detectRawContours(output.get(), opType, currentGridWidth, currentGridHeight);
 
         // Debug: Save raw contours visualization
         if (!raw_contours.empty()) {
@@ -815,7 +819,7 @@ public:
         }
 
         // Step 5: Simplify contours using geometry
-        auto simplified_contours = contourEngine.simplifyContoursWithGeometry(
+        auto simplified_contours = simplifyEngine.simplifyContoursWithGeometry(
             raw_contours, preparedLayer1.get(), preparedLayer2.get(),
             output.get(), intersection_points_set, opType,
             currentGridWidth, currentGridHeight);
