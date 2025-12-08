@@ -2,6 +2,7 @@
 #include "GpuKernelProfiler.cuh"
 #include "LayerImpl.h"
 #include "CommonRenderUtils.cuh"
+#include "VisualizationUtils.h"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <algorithm>
@@ -133,6 +134,29 @@ std::vector<std::vector<cv::Point>> RawContourDetectEngine::detectRawContours(
             currentGridHeight);
 
         std::cout << "GPU tracing found " << gpuContours.size() << " contours" << std::endl;
+
+        // Return GPU contours for INTERSECTION operation
+        return gpuContours;
+    }
+
+    // For non-INTERSECTION operations, return empty (caller should use detectRawContoursCPU)
+    return contours;
+}
+
+// ============================================================================
+// CPU Contour Detection Implementation (OpenCV findContours)
+// ============================================================================
+
+std::vector<std::vector<cv::Point>> RawContourDetectEngine::detectRawContoursCPU(
+    LayerImpl* outputLayer,
+    OperationType opType,
+    unsigned int currentGridWidth,
+    unsigned int currentGridHeight) {
+
+    std::vector<std::vector<cv::Point>> contours;
+
+    if (!outputLayer) {
+        return contours;
     }
 
     // Ensure output bitmap is on host
@@ -175,120 +199,11 @@ std::vector<std::vector<cv::Point>> RawContourDetectEngine::detectRawContours(
         }
     }
 
-    // Save binary image for debugging
-    std::string debugFilename = "debug_binary_";
-    switch(opType) {
-        case OperationType::OFFSET:
-            debugFilename += "offset.png";
-            break;
-        case OperationType::INTERSECTION:
-            debugFilename += "intersection.png";
-            break;
-        case OperationType::UNION:
-            debugFilename += "union.png";
-            break;
-        case OperationType::DIFFERENCE:
-            debugFilename += "difference.png";
-            break;
-        case OperationType::XOR:
-            debugFilename += "xor.png";
-            break;
-        default:
-            debugFilename += "unknown.png";
-            break;
-    }
-    cv::imwrite(debugFilename, binaryImage);
-
     // Use OpenCV to find contours
     std::vector<cv::Vec4i> hierarchy;
     cv::findContours(binaryImage, contours, hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_NONE);
 
-    // ========================================================================
-    // Save CPU and GPU raw contours separately
-    // ========================================================================
-    if (opType == OperationType::INTERSECTION) {
-        // Save CPU raw contours
-        cv::Mat cpuRawImage = cv::Mat::zeros(currentGridHeight, currentGridWidth, CV_8UC3);
-        cv::Scalar cpuColor(0, 255, 0);  // Green
-        for (size_t i = 0; i < contours.size(); ++i) {
-            if (contours[i].size() > 1) {
-                cv::polylines(cpuRawImage, contours[i], true, cpuColor, 1, cv::LINE_8);
-            }
-        }
-        cv::imwrite("cpu_raw_contours.png", cpuRawImage);
-        std::cout << "Saved CPU raw contours: cpu_raw_contours.png (" << contours.size() << " contours)" << std::endl;
-
-        // Save GPU raw contours
-        if (!gpuContours.empty()) {
-            cv::Mat gpuRawImage = cv::Mat::zeros(currentGridHeight, currentGridWidth, CV_8UC3);
-            cv::Scalar gpuColor(0, 0, 255);  // Red
-            for (size_t i = 0; i < gpuContours.size(); ++i) {
-                if (gpuContours[i].size() > 1) {
-                    cv::polylines(gpuRawImage, gpuContours[i], true, gpuColor, 1, cv::LINE_8);
-                }
-            }
-            cv::imwrite("gpu_raw_contours.png", gpuRawImage);
-            std::cout << "Saved GPU raw contours: gpu_raw_contours.png (" << gpuContours.size() << " contours)" << std::endl;
-        }
-    }
-
-    // ========================================================================
-    // Comparison Visualization for INTERSECTION operation
-    // ========================================================================
-    if (opType == OperationType::INTERSECTION && !gpuContours.empty()) {
-        std::cout << "Creating comparison visualization: GPU vs OpenCV contours" << std::endl;
-        std::cout << "  GPU contours: " << gpuContours.size() << std::endl;
-        std::cout << "  OpenCV contours: " << contours.size() << std::endl;
-
-        // Create RGB image for comparison
-        cv::Mat comparisonImage = cv::Mat::zeros(currentGridHeight, currentGridWidth, CV_8UC3);
-
-        // Draw OpenCV contours in GREEN using polylines
-        cv::Scalar greenColor(0, 255, 0);
-        for (size_t i = 0; i < contours.size(); ++i) {
-            if (contours[i].size() > 1) {
-                cv::polylines(comparisonImage, contours[i], true, greenColor, 1, cv::LINE_8);
-            }
-        }
-
-        // Draw GPU contours in RED using polylines (overlay on top)
-        cv::Scalar redColor(0, 0, 255);
-        for (size_t i = 0; i < gpuContours.size(); ++i) {
-            if (gpuContours[i].size() > 1) {
-                cv::polylines(comparisonImage, gpuContours[i], true, redColor, 1, cv::LINE_8);
-            }
-        }
-
-        // Save comparison image (CPU first, GPU on top)
-        std::string comparisonFilename = "contour_comparison_intersection_cpu_gpu.png";
-        cv::imwrite(comparisonFilename, comparisonImage);
-        std::cout << "  Saved comparison to: " << comparisonFilename << std::endl;
-        std::cout << "  Color legend: GREEN=OpenCV contours (bottom), RED=GPU contours (overlay on top)" << std::endl;
-
-        // Create reverse order comparison image (GPU first, CPU on top)
-        cv::Mat reverseComparisonImage = cv::Mat::zeros(currentGridHeight, currentGridWidth, CV_8UC3);
-
-        // Draw GPU contours in RED first (bottom layer)
-        for (size_t i = 0; i < gpuContours.size(); ++i) {
-            if (gpuContours[i].size() > 1) {
-                cv::polylines(reverseComparisonImage, gpuContours[i], true, redColor, 1, cv::LINE_8);
-            }
-        }
-
-        // Draw OpenCV contours in GREEN on top (overlay)
-        for (size_t i = 0; i < contours.size(); ++i) {
-            if (contours[i].size() > 1) {
-                cv::polylines(reverseComparisonImage, contours[i], true, greenColor, 1, cv::LINE_8);
-            }
-        }
-
-        // Save reverse order comparison image
-        std::string reverseComparisonFilename = "contour_comparison_intersection_gpu_cpu.png";
-        cv::imwrite(reverseComparisonFilename, reverseComparisonImage);
-        std::cout << "  Saved reverse comparison to: " << reverseComparisonFilename << std::endl;
-
-        return contours;
-    }
+    std::cout << "CPU contour detection found " << contours.size() << " contours" << std::endl;
 
     return contours;
 }
@@ -426,95 +341,7 @@ std::vector<std::vector<cv::Point>> RawContourDetectEngine::traceContoursGPU(
     thrust::device_vector<unsigned int> d_subject_counts(numGroups, 0);
     thrust::device_vector<unsigned int> d_clipper_counts(numGroups, 0);
 
-    // ========== DEBUG: Visualize Group 11 contour pixels ==========
-    const unsigned int DEBUG_GROUP = 11;
-    if (DEBUG_GROUP < numGroups) {
-        thrust::host_vector<unsigned int> h_group_starts = d_group_starts;
-        thrust::host_vector<unsigned int> h_group_counts = d_group_counts;
-        thrust::host_vector<unsigned int> h_unique_values = d_unique_values;
-        thrust::host_vector<unsigned int> h_sortedIndices = sortedPixels.indices;
-
-        unsigned int groupStart = h_group_starts[DEBUG_GROUP];
-        unsigned int groupCount = h_group_counts[DEBUG_GROUP];
-        unsigned int groupValue = h_unique_values[DEBUG_GROUP];
-
-        std::cout << "DEBUG Group " << DEBUG_GROUP << ": value=" << groupValue
-                  << ", start=" << groupStart << ", count=" << groupCount << std::endl;
-
-        // Find bounding box of group 11 pixels
-        unsigned int minX = width, maxX = 0, minY = height, maxY = 0;
-        for (unsigned int i = 0; i < groupCount; ++i) {
-            unsigned int pixelIdx = h_sortedIndices[groupStart + i];
-            unsigned int px = pixelIdx % width;
-            unsigned int py = pixelIdx / width;
-            minX = std::min(minX, px);
-            maxX = std::max(maxX, px);
-            minY = std::min(minY, py);
-            maxY = std::max(maxY, py);
-        }
-
-        // Add margin for better visualization
-        unsigned int margin = 5;
-        minX = (minX > margin) ? (minX - margin) : 0;
-        minY = (minY > margin) ? (minY - margin) : 0;
-        maxX = std::min(maxX + margin, width - 1);
-        maxY = std::min(maxY + margin, height - 1);
-
-        unsigned int regionWidth = maxX - minX + 1;
-        unsigned int regionHeight = maxY - minY + 1;
-
-        std::cout << "  Bounding box: (" << minX << "," << minY << ") to ("
-                  << maxX << "," << maxY << ")" << std::endl;
-
-        // Create visualization image (scale up for better visibility)
-        unsigned int scale = 10;
-        cv::Mat visImage = cv::Mat::zeros(regionHeight * scale, regionWidth * scale, CV_8UC3);
-
-        // Draw all pixels in group 11
-        for (unsigned int i = 0; i < groupCount; ++i) {
-            unsigned int pixelIdx = h_sortedIndices[groupStart + i];
-            unsigned int px = pixelIdx % width;
-            unsigned int py = pixelIdx / width;
-
-            if (px >= minX && px <= maxX && py >= minY && py <= maxY) {
-                unsigned int imgX = (px - minX) * scale;
-                unsigned int imgY = (py - minY) * scale;
-                cv::rectangle(visImage,
-                            cv::Point(imgX, imgY),
-                            cv::Point(imgX + scale - 1, imgY + scale - 1),
-                            cv::Scalar(255, 255, 255), cv::FILLED);
-            }
-        }
-
-        // Draw grid lines and axis labels
-        for (unsigned int x = 0; x <= regionWidth; ++x) {
-            int imgX = x * scale;
-            cv::line(visImage, cv::Point(imgX, 0), cv::Point(imgX, regionHeight * scale - 1),
-                    cv::Scalar(50, 50, 50), 1);
-
-            if (x % 5 == 0 && x < regionWidth) {
-                std::string label = std::to_string(minX + x);
-                cv::putText(visImage, label, cv::Point(imgX + 2, 12),
-                           cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
-            }
-        }
-        for (unsigned int y = 0; y <= regionHeight; ++y) {
-            int imgY = y * scale;
-            cv::line(visImage, cv::Point(0, imgY), cv::Point(regionWidth * scale - 1, imgY),
-                    cv::Scalar(50, 50, 50), 1);
-
-            if (y % 5 == 0 && y < regionHeight) {
-                std::string label = std::to_string(minY + y);
-                cv::putText(visImage, label, cv::Point(2, imgY + 12),
-                           cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
-            }
-        }
-
-        std::string filename = "debug_group11_contour_pixels.png";
-        cv::imwrite(filename, visImage);
-        std::cout << "  Saved contour pixel visualization: " << filename << std::endl;
-    }
-
+    
     // Step 5: Launch tracing kernel
     dim3 blockSize(1, 1, 1);
     dim3 gridSize(numGroups, 1, 1);
@@ -632,86 +459,25 @@ std::vector<std::vector<cv::Point>> RawContourDetectEngine::traceContoursGPU(
 
     std::cout << "GPU tracing complete: extracted " << contours.size() << " contours" << std::endl;
 
-    // ========== VISUALIZATION ==========
-    cv::Mat visImage = cv::Mat::zeros(height, width, CV_8UC3);
-    thrust::host_vector<unsigned int> h_unique_values(d_unique_values);
+    // Visualize GPU traced contours using VisualizationUtils
+    {
+        // Convert thrust::host_vector to std::vector for visualization
+        std::vector<uint2> h_contours_vec(h_outputContours.begin(), h_outputContours.end());
+        std::vector<unsigned int> h_counts_vec(h_outputCounts.begin(), h_outputCounts.end());
+        thrust::host_vector<unsigned int> h_unique_values_thrust(d_unique_values);
+        std::vector<unsigned int> h_unique_values_vec(h_unique_values_thrust.begin(), h_unique_values_thrust.end());
 
-    unsigned int contourIdx = 0;
-    for (unsigned int g = 0; g < numGroups; ++g) {
-        unsigned int totalCount = h_outputCounts[g];
-        if (totalCount > 0) {
-            unsigned int baseIdx = g * maxPointsPerContour;
-            unsigned int i = 0;
-            unsigned int contourInGroup = 0;
-
-            cv::Scalar color;
-            if (g < 100) {
-                color = cv::Scalar(0, 0, 255);
-            } else if (g < 200) {
-                color = cv::Scalar(0, 255, 0);
-            } else {
-                color = cv::Scalar(255, 0, 0);
-            }
-
-            while (i < totalCount) {
-                unsigned int contourLen = 0;
-                unsigned int startIdx = i;
-
-                if (contourInGroup == 0) {
-                    while (i < totalCount) {
-                        uint2 pt = h_outputContours[baseIdx + i];
-                        if (pt.x == 0xFFFFFFFF) {
-                            break;
-                        }
-                        i++;
-                    }
-                    contourLen = i - startIdx;
-                } else {
-                    uint2 marker = h_outputContours[baseIdx + i];
-                    if (marker.x == 0xFFFFFFFF) {
-                        contourLen = marker.y;
-                        i++;
-                        startIdx = i;
-                        i += contourLen;
-                    } else {
-                        i++;
-                        continue;
-                    }
-                }
-
-                if (contourLen > 0) {
-                    for (unsigned int j = 0; j < contourLen; ++j) {
-                        uint2 pt1 = h_outputContours[baseIdx + startIdx + j];
-                        uint2 pt2 = h_outputContours[baseIdx + startIdx + ((j + 1) % contourLen)];
-
-                        cv::Point p1(pt1.x, pt1.y);
-                        cv::Point p2(pt2.x, pt2.y);
-                        cv::line(visImage, p1, p2, color, 1, cv::LINE_AA);
-                    }
-
-                    unsigned int groupValue = h_unique_values[g];
-                    unsigned int subject_id = (groupValue & 0xFFFF) - 1;
-                    unsigned int clipper_id = ((groupValue >> 16) & 0xFFFF) - 1;
-
-                    uint2 firstPt = h_outputContours[baseIdx + startIdx];
-                    cv::Point labelPos(firstPt.x + 5, firstPt.y - 5);
-
-                    std::string label = "(" + std::to_string(subject_id) + "," + std::to_string(clipper_id) + ")";
-
-                    cv::putText(visImage, label, labelPos, cv::FONT_HERSHEY_SIMPLEX, 0.3,
-                                cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-
-                    contourIdx++;
-                }
-
-                contourInGroup++;
-            }
-        }
+        VisualizationUtils::visualizeGPUTracedContours(
+            h_contours_vec,
+            h_counts_vec,
+            h_unique_values_vec,
+            numGroups,
+            maxPointsPerContour,
+            width,
+            height,
+            cv::Scalar(0, 0, 255),  // Red contours
+            "step4_gpu_contour_tracing_visualization.png");
     }
-
-    std::string outputFilename = "gpu_contour_tracing_visualization.png";
-    cv::imwrite(outputFilename, visImage);
-    std::cout << "Saved GPU contour visualization to: " << outputFilename << std::endl;
 
     return contours;
 }

@@ -35,12 +35,6 @@ std::vector<std::vector<cv::Point>> SimplifyContourEngine::simplifyContoursWithG
     // Ensure bitmap is on host
     outputLayer->copyBitmapToHost();
 
-    // Visualization: Subject, Clipper, Raw Contours, and Intersection Points
-    VisualizationUtils::visualizeSimplificationDebugLayers(
-        subjectLayer, clipperLayer,
-        raw_contours, intersection_points_set,
-        currentGridWidth, currentGridHeight);
-
     // Process each contour using the exact algorithm from main.cu (lines 1283-1624)
     for (size_t contour_idx = 0; contour_idx < raw_contours.size(); ++contour_idx) {
         const auto& contour = raw_contours[contour_idx];

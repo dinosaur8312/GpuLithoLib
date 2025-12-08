@@ -37,7 +37,7 @@ public:
     ~RawContourDetectEngine();
 
     /**
-     * @brief Detect raw contours from output layer bitmap
+     * @brief Detect raw contours from output layer bitmap using GPU
      * @param outputLayer Layer with overlay bitmap
      * @param opType Operation type
      * @param currentGridWidth Grid width
@@ -45,6 +45,20 @@ public:
      * @return Vector of raw contours
      */
     std::vector<std::vector<cv::Point>> detectRawContours(
+        LayerImpl* outputLayer,
+        OperationType opType,
+        unsigned int currentGridWidth,
+        unsigned int currentGridHeight);
+
+    /**
+     * @brief Detect raw contours from output layer bitmap using CPU (OpenCV findContours)
+     * @param outputLayer Layer with overlay bitmap
+     * @param opType Operation type
+     * @param currentGridWidth Grid width
+     * @param currentGridHeight Grid height
+     * @return Vector of raw contours
+     */
+    std::vector<std::vector<cv::Point>> detectRawContoursCPU(
         LayerImpl* outputLayer,
         OperationType opType,
         unsigned int currentGridWidth,

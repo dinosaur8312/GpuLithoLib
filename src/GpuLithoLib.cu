@@ -474,7 +474,7 @@ public:
             preparedLayer2.get(),
             currentGridWidth, currentGridHeight,
             cv::Scalar(0, 0, 255),  // Red
-            "debug_clipper_layer_vertices.png");
+            "step0_cpu_clipper_layer_polygon_plot.png");
 
         // Step 1: Ray casting for both layers
         // Old method (commented out):
@@ -482,85 +482,77 @@ public:
         // performRayCasting(preparedLayer2.get(), (opType == OperationType::DIFFERENCE) ? 0 : 1);
 
         // New optimized scanline method:
-        cudaDeviceSynchronize();  // Ensure first layer is done before second
-        fflush(0);
-        printf("Starting scanline ray casting for layer 1...\n");
         performScanlineRayCasting(preparedLayer1.get(), (opType == OperationType::DIFFERENCE) ? 1 : 1);
-        cudaDeviceSynchronize();  // Ensure first layer is done before second
-        printf("Starting scanline ray casting for layer 2...\n");
-        fflush(0);
         performScanlineRayCasting(preparedLayer2.get(), (opType == OperationType::DIFFERENCE) ? 0 : 1);
-        cudaDeviceSynchronize();  // Ensure first layer is done before second
-        fflush(0);
 
-        // ========== DEBUG: Check preparedLayer2 bitmap at index 2247600 ==========
-        {
-            unsigned int debug_idx = 2247600;
-            unsigned int h_clipper_pixel_val = 0;
-            CHECK_GPU_ERROR(gpuMemcpy(&h_clipper_pixel_val, preparedLayer2->d_bitmap + debug_idx,
-                                       sizeof(unsigned int), gpuMemcpyDeviceToHost));
-            std::cout << "\n========== DEBUG: preparedLayer2 bitmap after scanline raycasting ==========" << std::endl;
-            std::cout << "  preparedLayer2->d_bitmap[" << debug_idx << "] = " << h_clipper_pixel_val << std::endl;
-            std::cout << "========== END DEBUG ==========" << std::endl;
-        }
+        // DEBUG: Visualize subject and clipper layer bitmaps with CPU polygon outlines
+        VisualizationUtils::visualizeLayerBitmap(
+            preparedLayer1.get(),
+            currentGridWidth, currentGridHeight,
+            cv::Vec3b(150, 200, 150),  // Light green fill
+            cv::Scalar(0, 128, 0),      // Dark green outlines
+            "step1_subject_layer_bitmap.png");
+
+        VisualizationUtils::visualizeLayerBitmap(
+            preparedLayer2.get(),
+            currentGridWidth, currentGridHeight,
+            cv::Vec3b(150, 150, 200),  // Light red fill
+            cv::Scalar(0, 0, 255),      // Red outlines
+            "step1_clipper_layer_bitmap.png");
+
 
         // Step 2: Overlay
         performOverlay(preparedLayer1.get(), preparedLayer2.get(), output.get());
 
-        // ========== DEBUG: Check output bitmap at index 2247600 after overlay ==========
-        {
-            unsigned int debug_idx = 2247600;
-            unsigned int h_output_pixel_val = 0;
-            CHECK_GPU_ERROR(gpuMemcpy(&h_output_pixel_val, output->d_bitmap + debug_idx,
-                                       sizeof(unsigned int), gpuMemcpyDeviceToHost));
-            unsigned int subject_part = h_output_pixel_val & 0xFFFF;
-            unsigned int clipper_part = (h_output_pixel_val >> 16) & 0xFFFF;
-            std::cout << "\n========== DEBUG: output bitmap after overlay ==========" << std::endl;
-            std::cout << "  output->d_bitmap[" << debug_idx << "] = " << h_output_pixel_val
-                      << " (subject=" << subject_part << ", clipper=" << clipper_part << ")" << std::endl;
-            std::cout << "========== END DEBUG ==========" << std::endl;
-        }
+        // DEBUG: Visualize overlay bitmap with RGB color encoding
+        VisualizationUtils::visualizeOverlayBitmap(
+            output.get(), currentGridWidth, currentGridHeight,
+            "step2_overlay_bitmap_rgb.png");
 
         // Step 3: Compute intersection points from overlay result
         auto intersection_points_set = intersectionEngine.computeAllIntersectionPoints(
             output.get(), preparedLayer1.get(), preparedLayer2.get(),
             currentGridWidth, currentGridHeight);
         
-        // Step 4: Detect raw contours
-        auto raw_contours = rawContourEngine.detectRawContours(output.get(), opType, currentGridWidth, currentGridHeight);
+        // Step 4: Detect raw contours using both GPU and CPU methods
+        auto gpu_contours = rawContourEngine.detectRawContours(output.get(), opType, currentGridWidth, currentGridHeight);
+        auto cpu_contours = rawContourEngine.detectRawContoursCPU(output.get(), opType, currentGridWidth, currentGridHeight);
 
-        // Debug: Save raw contours visualization
-        if (!raw_contours.empty()) {
-            cv::Mat rawContourImage(currentGridHeight, currentGridWidth, CV_8UC3, cv::Scalar(255, 255, 255));
-            for (const auto& contour : raw_contours) {
-                if (contour.size() >= 2) {
-                    for (size_t i = 0; i < contour.size(); ++i) {
-                        size_t next_i = (i + 1) % contour.size();
-                        cv::line(rawContourImage, contour[i], contour[next_i], cv::Scalar(0, 0, 255), 1);
-                    }
-                }
-            }
-
-            std::string debugRawFilename = "debug_raw_contours_";
-            switch(opType) {
-                case OperationType::INTERSECTION:
-                    debugRawFilename += "intersection.png";
-                    break;
-                case OperationType::UNION:
-                    debugRawFilename += "union.png";
-                    break;
-                case OperationType::DIFFERENCE:
-                    debugRawFilename += "difference.png";
-                    break;
-                case OperationType::XOR:
-                    debugRawFilename += "xor.png";
-                    break;
-                default:
-                    debugRawFilename += "unknown.png";
-                    break;
-            }
-            cv::imwrite(debugRawFilename, rawContourImage);
+        // DEBUG: Visualize GPU and CPU contours separately and compare
+        if (!gpu_contours.empty()) {
+            VisualizationUtils::drawContours(
+                gpu_contours, currentGridWidth, currentGridHeight,
+                cv::Scalar(0, 0, 255),  // Red for GPU
+                "step4_gpu_raw_contours.png");
         }
+
+        if (!cpu_contours.empty()) {
+            VisualizationUtils::drawContours(
+                cpu_contours, currentGridWidth, currentGridHeight,
+                cv::Scalar(0, 255, 0),  // Green for CPU
+                "step4_cpu_raw_contours.png");
+        }
+
+        // Compare GPU vs CPU contours if both are available
+        if (!gpu_contours.empty() && !cpu_contours.empty()) {
+            VisualizationUtils::drawContoursComparison(
+                cpu_contours, gpu_contours,
+                currentGridWidth, currentGridHeight,
+                cv::Scalar(0, 255, 0),  // Green for CPU
+                cv::Scalar(0, 0, 255),  // Red for GPU
+                "cpu", "gpu",
+                "step4_contour_comparison");
+        }
+
+        // Use GPU contours if available, otherwise fall back to CPU
+        auto& raw_contours = gpu_contours.empty() ? cpu_contours : gpu_contours;
+
+        // DEBUG: Visualization - Subject, Clipper, Raw Contours, and Intersection Points
+        VisualizationUtils::visualizeSimplificationDebugLayers(
+            preparedLayer1.get(), preparedLayer2.get(),
+            raw_contours, intersection_points_set,
+            currentGridWidth, currentGridHeight,
+            "step5_pre-simplification_debug_layers.png");
 
         // Step 5: Simplify contours using geometry
         auto simplified_contours = simplifyEngine.simplifyContoursWithGeometry(
