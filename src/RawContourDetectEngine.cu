@@ -326,7 +326,16 @@ std::vector<std::vector<cv::Point>> RawContourDetectEngine::traceContoursGPU(
     thrust::device_vector<unsigned int> d_group_starts(numGroups);
     thrust::exclusive_scan(d_group_counts.begin(), d_group_counts.end(), d_group_starts.begin());
 
-    // Step 3: Allocate visited array
+    // Step 3: Allocate visited arrays for border-following algorithm
+    // Edge visited array: tracks which edges have been traced
+    // Size = (height+1) * (width+1) * 4 (4 directions per vertex)
+    size_t edgeVisitedSize = (size_t)(height + 1) * (width + 1) * 4;
+    thrust::device_vector<unsigned char> d_edgeVisited(edgeVisitedSize, 0);
+
+    // Pixel processed array: tracks which pixels have been used as starting points
+    thrust::device_vector<unsigned char> d_pixelProcessed(width * height, 0);
+
+    // Also keep the old visited array for the original kernel (for fallback/comparison)
     thrust::device_vector<unsigned char> d_visited(sortedPixels.count, 0);
 
     // Step 4: Allocate output arrays
@@ -341,8 +350,8 @@ std::vector<std::vector<cv::Point>> RawContourDetectEngine::traceContoursGPU(
     thrust::device_vector<unsigned int> d_subject_counts(numGroups, 0);
     thrust::device_vector<unsigned int> d_clipper_counts(numGroups, 0);
 
-    
     // Step 5: Launch tracing kernel
+    // Use border-following algorithm (handles single-pixel protrusions correctly)
     dim3 blockSize(1, 1, 1);
     dim3 gridSize(numGroups, 1, 1);
 
@@ -351,7 +360,8 @@ std::vector<std::vector<cv::Point>> RawContourDetectEngine::traceContoursGPU(
     gpuEventCreate(&traceStop);
     gpuEventRecord(traceStart);
 
-    traceContoursParallel_kernel<<<gridSize, blockSize>>>(
+    // Use the new border-following kernel
+    traceContoursParallelBorder_kernel<<<gridSize, blockSize>>>(
         contourBitmap,
         overlayBitmap,
         thrust::raw_pointer_cast(sortedPixels.indices.data()),
@@ -360,7 +370,8 @@ std::vector<std::vector<cv::Point>> RawContourDetectEngine::traceContoursGPU(
         thrust::raw_pointer_cast(d_group_starts.data()),
         thrust::raw_pointer_cast(d_group_counts.data()),
         numGroups,
-        thrust::raw_pointer_cast(d_visited.data()),
+        thrust::raw_pointer_cast(d_edgeVisited.data()),
+        thrust::raw_pointer_cast(d_pixelProcessed.data()),
         thrust::raw_pointer_cast(d_outputContours.data()),
         thrust::raw_pointer_cast(d_outputCounts.data()),
         thrust::raw_pointer_cast(d_subject_ids.data()),
@@ -569,6 +580,463 @@ __global__ void extractContours_kernel(
 
 // ============================================================================
 // Device Helper Functions
+// ============================================================================
+
+// ============================================================================
+// Border-Following Algorithm (Suzuki-Abe style)
+// ============================================================================
+// This algorithm traces the BOUNDARY between foreground and background pixels,
+// not the pixels themselves. It handles single-pixel-width protrusions correctly
+// by tracing both sides of the protrusion as part of a continuous boundary.
+//
+// Coordinate System:
+// - Vertex coordinates (vx, vy) are at grid corners, not pixel centers
+// - Pixel (px, py) occupies the square with corners at:
+//   (px, py), (px+1, py), (px, py+1), (px+1, py+1)
+// - We trace along edges between vertices, keeping foreground on our right
+//
+// Direction encoding (for edge travel):
+//   0 = right (+x), 1 = down (+y), 2 = left (-x), 3 = up (-y)
+// ============================================================================
+
+// Forward declaration (defined later in the file)
+__device__ inline void addPolygonID(
+    unsigned int* idBuffer,
+    unsigned int* idCount,
+    unsigned int newID,
+    unsigned int maxIDs);
+
+// Direction vectors for vertex movement
+__device__ __constant__ int borderDvx[4] = {1, 0, -1, 0};  // right, down, left, up
+__device__ __constant__ int borderDvy[4] = {0, 1, 0, -1};
+
+// For each direction, the pixel that should be on our RIGHT side
+// When at vertex (vx, vy) heading in direction d:
+//   dir 0 (right): pixel (vx, vy) is to our right (below the edge)
+//   dir 1 (down):  pixel (vx-1, vy) is to our right (left of edge)
+//   dir 2 (left):  pixel (vx-1, vy-1) is to our right (above edge)
+//   dir 3 (up):    pixel (vx, vy-1) is to our right (right of edge)
+// Pixel to the right of the edge when traveling in direction dir from vertex (vx,vy)
+// dir=0 (right): walking along top edge of pixel, foreground pixel is (vx, vy)
+// dir=1 (down): walking along left edge of pixel, foreground pixel is (vx-1, vy)
+// dir=2 (left): walking along bottom edge of pixel to top-left, foreground pixel is (vx-1, vy-1)
+// dir=3 (up): walking along right edge of pixel to top-left, foreground pixel is (vx, vy-1)
+__device__ __constant__ int rightPixelDx[4] = {0, -1, -1, 0};
+__device__ __constant__ int rightPixelDy[4] = {0, 0, -1, -1};
+
+// For each direction, the pixel that should be on our LEFT side
+// dir 0 (right): pixel (vx, vy-1) is to our left (above the edge)
+// dir 1 (down):  pixel (vx, vy) is to our left (right of edge)
+// dir 2 (left):  pixel (vx-1, vy) is to our left (below edge)
+// dir 3 (up):    pixel (vx-1, vy-1) is to our left (left of edge)
+__device__ __constant__ int leftPixelDx[4] = {0, 0, -1, -1};
+__device__ __constant__ int leftPixelDy[4] = {-1, 0, 0, -1};
+
+/**
+ * @brief Check if a pixel is foreground (has the target value) - for contour bitmap
+ */
+__device__ inline bool isForegroundPixel(
+    const unsigned int* bitmap,
+    int px, int py,
+    unsigned int targetValue,
+    unsigned int width,
+    unsigned int height)
+{
+    if (px < 0 || px >= (int)width || py < 0 || py >= (int)height) {
+        return false;
+    }
+    return bitmap[py * width + px] == targetValue;
+}
+
+/**
+ * @brief Check if a pixel is foreground for INTERSECTION operation
+ * Foreground = pixel has both subject (lower 16 bits) AND clipper (upper 16 bits) non-zero
+ */
+__device__ inline bool isIntersectionForegroundPixel(
+    const unsigned int* overlayBitmap,
+    int px, int py,
+    unsigned int width,
+    unsigned int height)
+{
+    if (px < 0 || px >= (int)width || py < 0 || py >= (int)height) {
+        return false;
+    }
+    unsigned int overlayValue = overlayBitmap[py * width + px];
+    unsigned int subjectId = overlayValue & 0xFFFF;
+    unsigned int clipperId = (overlayValue >> 16) & 0xFFFF;
+
+    // For intersection: foreground if BOTH subject and clipper are present
+    return (subjectId != 0 && clipperId != 0);
+}
+
+/**
+ * @brief Check if a pixel belongs to the SAME intersection region (same subject+clipper pair)
+ * This is used for border tracing to ensure we stay within the same connected component
+ */
+__device__ inline bool isSameIntersectionRegion(
+    const unsigned int* overlayBitmap,
+    int px, int py,
+    unsigned int targetValue,  // encoded as (clipper_id << 16) | subject_id
+    unsigned int width,
+    unsigned int height)
+{
+    if (px < 0 || px >= (int)width || py < 0 || py >= (int)height) {
+        return false;
+    }
+    unsigned int overlayValue = overlayBitmap[py * width + px];
+
+    // Check if this pixel has the same subject+clipper combination
+    return (overlayValue == targetValue);
+}
+
+/**
+ * @brief Get the pixel coordinates to the right of current edge direction
+ * @param vx, vy Current vertex position
+ * @param dir Current direction (0-3)
+ * @param outPx, outPy Output pixel coordinates
+ */
+__device__ inline void getPixelToRight(
+    int vx, int vy, int dir,
+    int* outPx, int* outPy)
+{
+    *outPx = vx + rightPixelDx[dir];
+    *outPy = vy + rightPixelDy[dir];
+}
+
+/**
+ * @brief Get the pixel coordinates to the left of current edge direction
+ * @param vx, vy Current vertex position
+ * @param dir Current direction (0-3)
+ * @param outPx, outPy Output pixel coordinates
+ */
+__device__ inline void getPixelToLeft(
+    int vx, int vy, int dir,
+    int* outPx, int* outPy)
+{
+    *outPx = vx + leftPixelDx[dir];
+    *outPy = vy + leftPixelDy[dir];
+}
+
+/**
+ * @brief Find a starting position for border tracing using overlay bitmap
+ * Finds a foreground pixel (same intersection region) with background to its left,
+ * returns the vertex position and direction for starting the trace.
+ *
+ * @param overlayBitmap The overlay bitmap (subject in low 16 bits, clipper in high 16 bits)
+ * @param startPixelIdx The pixel index to start from (from sorted indices)
+ * @param targetValue The target pixel value (subject+clipper encoded)
+ * @param width, height Bitmap dimensions
+ * @param outVx, outVy Output starting vertex position
+ * @param outDir Output starting direction
+ * @return true if valid start found, false otherwise
+ */
+__device__ bool findBorderStartPosition(
+    const unsigned int* overlayBitmap,
+    unsigned int startPixelIdx,
+    unsigned int targetValue,
+    unsigned int width,
+    unsigned int height,
+    int* outVx, int* outVy, int* outDir)
+{
+    int px = startPixelIdx % width;
+    int py = startPixelIdx / width;
+
+    // Verify this pixel belongs to the target intersection region
+    if (!isSameIntersectionRegion(overlayBitmap, px, py, targetValue, width, height)) {
+        return false;
+    }
+
+    // Try to find an edge where we have background (different region) on one side
+    // Check each of the 4 edges of this pixel
+
+    // Check left edge: if pixel to left is not same region, start here going UP
+    if (!isSameIntersectionRegion(overlayBitmap, px - 1, py, targetValue, width, height)) {
+        *outVx = px;      // Left edge of pixel
+        *outVy = py + 1;  // Bottom of left edge
+        *outDir = 3;      // Going up (foreground on right)
+        return true;
+    }
+
+    // Check top edge: if pixel above is not same region, start here going right
+    if (!isSameIntersectionRegion(overlayBitmap, px, py - 1, targetValue, width, height)) {
+        *outVx = px;      // Left of top edge
+        *outVy = py;      // Top edge of pixel
+        *outDir = 0;      // Going right (foreground on right/below)
+        return true;
+    }
+
+    // Check right edge: if pixel to right is not same region, start here going DOWN
+    if (!isSameIntersectionRegion(overlayBitmap, px + 1, py, targetValue, width, height)) {
+        *outVx = px + 1;  // Right edge of pixel
+        *outVy = py;      // Top of right edge
+        *outDir = 1;      // Going down (foreground on right)
+        return true;
+    }
+
+    // Check bottom edge: if pixel below is not same region, start here going left
+    if (!isSameIntersectionRegion(overlayBitmap, px, py + 1, targetValue, width, height)) {
+        *outVx = px + 1;  // Right of bottom edge
+        *outVy = py + 1;  // Bottom edge of pixel
+        *outDir = 2;      // Going left (foreground on right/above)
+        return true;
+    }
+
+    // This pixel is completely surrounded by same region - not a boundary pixel
+    return false;
+}
+
+/**
+ * @brief Trace one contour using border-following algorithm
+ *
+ * This traces the boundary between foreground and background pixels,
+ * keeping foreground on the right side. Outputs vertex coordinates.
+ */
+__device__ void traceBorderContour(
+    const unsigned int* contourBitmap,
+    const unsigned int* overlayBitmap,
+    unsigned int startPixelIdx,
+    unsigned int targetValue,
+    unsigned char* edgeVisited,  // Edge visited array: [vy * (width+1) * 4 + vx * 4 + dir]
+    uint2* outputContour,
+    unsigned int* outputCount,
+    unsigned int* subjectIDs,
+    unsigned int* clipperIDs,
+    unsigned int* subjectCount,
+    unsigned int* clipperCount,
+    unsigned int width,
+    unsigned int height,
+    unsigned int maxPoints,
+    unsigned int groupIdx,
+    unsigned int contourIdx)
+{
+    *subjectCount = 0;
+    *clipperCount = 0;
+    *outputCount = 0;
+
+    bool debug = (groupIdx == 1);  // Debug group 1 which should have more points
+
+    int px = startPixelIdx % width;
+    int py = startPixelIdx / width;
+
+    if (debug) {
+        printf("# [Border Group %u, Contour %u] Starting pixel idx=%u, pos=(%d,%d), targetValue=%u\n",
+               groupIdx, contourIdx, startPixelIdx, px, py, targetValue);
+
+        // Print the actual overlay value at this location
+        unsigned int overlayValue = overlayBitmap[startPixelIdx];
+        unsigned int subj = overlayValue & 0xFFFF;
+        unsigned int clip = (overlayValue >> 16) & 0xFFFF;
+        printf("#   Overlay value at pixel: %u (subj=%u, clip=%u)\n", overlayValue, subj, clip);
+
+        // Check neighbors using overlay bitmap (same intersection region)
+        printf("#   Neighbors sameRegion (L,R,U,D): ");
+        printf("L=%d ", isSameIntersectionRegion(overlayBitmap, px-1, py, targetValue, width, height) ? 1 : 0);
+        printf("R=%d ", isSameIntersectionRegion(overlayBitmap, px+1, py, targetValue, width, height) ? 1 : 0);
+        printf("U=%d ", isSameIntersectionRegion(overlayBitmap, px, py-1, targetValue, width, height) ? 1 : 0);
+        printf("D=%d ", isSameIntersectionRegion(overlayBitmap, px, py+1, targetValue, width, height) ? 1 : 0);
+        printf("\n");
+    }
+
+    // Find starting position using overlay bitmap
+    int startVx, startVy, startDir;
+    if (!findBorderStartPosition(overlayBitmap, startPixelIdx, targetValue,
+                                  width, height, &startVx, &startVy, &startDir)) {
+        if (debug) {
+            printf("# [Border Group %u, Contour %u] Could not find start position for pixel %u\n",
+                   groupIdx, contourIdx, startPixelIdx);
+        }
+        return;
+    }
+
+    int vx = startVx;
+    int vy = startVy;
+    int dir = startDir;
+
+    unsigned int pointCount = 0;
+    unsigned int maxIter = (width + height) * 4 + 1000;  // Safety limit
+    unsigned int iterCount = 0;
+
+    // Edge visited index calculation helper
+    unsigned int edgeWidth = width + 1;
+
+    if (debug) {
+        printf("# [Border Group %u, Contour %u] Starting border trace at vertex (%d, %d), dir=%d, targetValue=%u\n",
+               groupIdx, contourIdx, startVx, startVy, startDir, targetValue);
+        printf("border_contour_%u_%u = [\n", groupIdx, contourIdx);
+    }
+
+    // Mark starting edge as visited
+    unsigned int startEdgeIdx = startVy * edgeWidth * 4 + startVx * 4 + startDir;
+    edgeVisited[startEdgeIdx] = 1;
+
+    do {
+        // Output current vertex position
+        if (pointCount < maxPoints) {
+            outputContour[pointCount].x = (unsigned int)vx;
+            outputContour[pointCount].y = (unsigned int)vy;
+
+            if (debug) {
+                printf("    (%d, %d),  # Point %u, dir=%d\n", vx, vy, pointCount, dir);
+            }
+            pointCount++;
+        }
+
+        // Collect polygon IDs from adjacent foreground pixel
+        int adjPx, adjPy;
+        getPixelToRight(vx, vy, dir, &adjPx, &adjPy);
+        if (adjPx >= 0 && adjPx < (int)width && adjPy >= 0 && adjPy < (int)height) {
+            unsigned int overlayValue = overlayBitmap[adjPy * width + adjPx];
+            unsigned int subject_id = overlayValue & 0xFFFF;
+            unsigned int clipper_id = (overlayValue >> 16) & 0xFFFF;
+            addPolygonID(subjectIDs, subjectCount, subject_id, 256);
+            addPolygonID(clipperIDs, clipperCount, clipper_id, 256);
+        }
+
+        // Try to turn right first (check if there's foreground in that direction AND background on left)
+        int tryDir = (dir + 1) % 4;  // Turn right
+        int newVx = vx + borderDvx[tryDir];
+        int newVy = vy + borderDvy[tryDir];
+        
+        // Check pixel on right (should be FG)
+        int checkPx, checkPy;
+        getPixelToRight(vx, vy, tryDir, &checkPx, &checkPy);
+        bool hasForeground = isSameIntersectionRegion(overlayBitmap, checkPx, checkPy, targetValue, width, height);
+
+        // Check pixel on left (should be BG)
+        int checkPxLeft, checkPyLeft;
+        getPixelToLeft(vx, vy, tryDir, &checkPxLeft, &checkPyLeft);
+        bool hasBackground = !isSameIntersectionRegion(overlayBitmap, checkPxLeft, checkPyLeft, targetValue, width, height);
+
+        // Check if this edge has already been visited (to prevent infinite loops)
+        // Edge is identified by (source_vertex, direction), so check from current position
+        unsigned int tryEdgeIdx = vy * edgeWidth * 4 + vx * 4 + tryDir;
+        bool edgeAlreadyVisited = (tryEdgeIdx < (height + 1) * edgeWidth * 4) && (edgeVisited[tryEdgeIdx] != 0);
+
+        // Allow revisit only if it's the starting edge (to close the contour)
+        // Starting edge is (startVx, startVy, startDir)
+        bool isStartEdge = (vx == startVx && vy == startVy && tryDir == startDir);
+        bool turnedRight = hasForeground && hasBackground && (!edgeAlreadyVisited || isStartEdge);
+
+        if (debug) {
+            printf("#   At vertex (%d,%d) dir=%d, try turn right to dir=%d, newV=(%d,%d), checkPixel=(%d,%d), isFG=%d, isBG=%d, visited=%d, isStart=%d\n",
+                   vx, vy, dir, tryDir, newVx, newVy, checkPx, checkPy, hasForeground ? 1 : 0, hasBackground ? 1 : 0, edgeAlreadyVisited ? 1 : 0, isStartEdge ? 1 : 0);
+        }
+
+        // Save old position for edge marking
+        int oldVx = vx;
+        int oldVy = vy;
+        int moveDir = dir;  // Direction we'll actually move in
+
+        if (turnedRight) {
+            // Can turn right - valid boundary edge and not visited
+            moveDir = tryDir;
+            dir = tryDir;
+            vx = newVx;
+            vy = newVy;
+            if (debug) {
+                printf("#     -> Turned right, new pos=(%d,%d), new dir=%d\n", vx, vy, dir);
+            }
+        } else {
+            // Can't turn right - need to go straight or turn left
+            // Keep turning left until we find a valid move
+            int turnCount = 0;
+            bool foundMove = false;
+            while (turnCount < 4) {
+                int nextVx = vx + borderDvx[dir];
+                int nextVy = vy + borderDvy[dir];
+
+                // Check pixel to the right of where we'd be going (must be FG)
+                int checkPxStraight, checkPyStraight;
+                getPixelToRight(vx, vy, dir, &checkPxStraight, &checkPyStraight);
+                bool canGoForeground = isSameIntersectionRegion(overlayBitmap, checkPxStraight, checkPyStraight, targetValue, width, height);
+                
+                // Check pixel to the left (must be BG)
+                int checkPxStraightLeft, checkPyStraightLeft;
+                getPixelToLeft(vx, vy, dir, &checkPxStraightLeft, &checkPyStraightLeft);
+                bool canGoBackground = !isSameIntersectionRegion(overlayBitmap, checkPxStraightLeft, checkPyStraightLeft, targetValue, width, height);
+
+                // Check if this edge has already been visited
+                // Edge is identified by (source_vertex, direction), so check from current position
+                unsigned int straightEdgeIdx = vy * edgeWidth * 4 + vx * 4 + dir;
+                bool straightEdgeVisited = (straightEdgeIdx < (height + 1) * edgeWidth * 4) && (edgeVisited[straightEdgeIdx] != 0);
+                bool straightIsStart = (vx == startVx && vy == startVy && dir == startDir);
+                bool canGoStraight = canGoForeground && canGoBackground && (!straightEdgeVisited || straightIsStart);
+
+                if (debug) {
+                    unsigned int actualVal = 0;
+                    if (checkPxStraight >= 0 && checkPxStraight < (int)width &&
+                        checkPyStraight >= 0 && checkPyStraight < (int)height) {
+                        actualVal = overlayBitmap[checkPyStraight * width + checkPxStraight];
+                    }
+                    printf("#     Try straight: nextV=(%d,%d), checkPixel=(%d,%d), pixVal=%u (s=%u,c=%u), target=%u, isFG=%d, isBG=%d, visited=%d, isStart=%d, turnCount=%d\n",
+                           nextVx, nextVy, checkPxStraight, checkPyStraight,
+                           actualVal, actualVal & 0xFFFF, (actualVal >> 16) & 0xFFFF, targetValue,
+                           canGoForeground ? 1 : 0, canGoBackground ? 1 : 0, straightEdgeVisited ? 1 : 0, straightIsStart ? 1 : 0, turnCount);
+                }
+
+                if (canGoStraight) {
+                    // This edge borders foreground and not visited, follow it
+                    moveDir = dir;  // We're moving in current direction
+                    vx = nextVx;
+                    vy = nextVy;
+                    foundMove = true;
+                    if (debug) {
+                        printf("#     -> Went straight, new pos=(%d,%d)\n", vx, vy);
+                    }
+                    break;
+                } else {
+                    // Turn left (convex corner of foreground region)
+                    dir = (dir + 3) % 4;
+                    turnCount++;
+                    if (debug) {
+                        printf("#     -> Turn left, new dir=%d\n", dir);
+                    }
+                }
+            }
+
+            if (!foundMove) {
+                // No valid move found - either isolated pixel or all edges visited
+                if (debug) {
+                    printf("]\n# [Border Group %u, Contour %u] No valid move found (turnCount=%d), ending trace\n\n",
+                           groupIdx, contourIdx, turnCount);
+                }
+                break;
+            }
+        }
+
+        // Mark the edge we just traversed as visited
+        // Edge is identified by (starting_vertex, direction)
+        unsigned int edgeIdx = oldVy * edgeWidth * 4 + oldVx * 4 + moveDir;
+        if (edgeIdx < (height + 1) * edgeWidth * 4) {
+            edgeVisited[edgeIdx] = 1;
+        }
+
+        iterCount++;
+
+        // Debug: check loop condition
+        if (debug) {
+            bool atStart = (vx == startVx && vy == startVy && dir == startDir);
+            printf("#   After move: pos=(%d,%d), dir=%d, atStart=%d, iterCount=%u\n",
+                   vx, vy, dir, atStart ? 1 : 0, iterCount);
+        }
+
+    } while ((vx != startVx || vy != startVy || dir != startDir) && iterCount < maxIter);
+
+    *outputCount = pointCount;
+
+    if (debug) {
+        if (vx == startVx && vy == startVy && dir == startDir) {
+            printf("]\n# [Border Group %u, Contour %u] Closed contour with %u vertices\n\n",
+                   groupIdx, contourIdx, pointCount);
+        } else {
+            printf("]\n# [Border Group %u, Contour %u] Max iterations reached (%u), trace incomplete\n\n",
+                   groupIdx, contourIdx, iterCount);
+        }
+    }
+}
+
+// ============================================================================
+// Original Pixel-Following Helper Functions (kept for backward compatibility)
 // ============================================================================
 
 __device__ inline unsigned int getBitmapPixel(
@@ -873,6 +1341,159 @@ __global__ void traceContoursParallel_kernel(
 
                 outputCounts[groupIdx] += localCount;
                 contourCount++;
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Border-Following Kernel: Each Block Processes One Group
+// ============================================================================
+// This kernel uses the Suzuki-Abe style border-following algorithm that traces
+// the boundary between foreground and background pixels. It correctly handles
+// single-pixel-width protrusions by tracing both sides of the protrusion.
+// ============================================================================
+
+__global__ void traceContoursParallelBorder_kernel(
+    const unsigned int* contourBitmap,
+    const unsigned int* overlayBitmap,
+    const unsigned int* sortedIndices,
+    const unsigned int* sortedValues,
+    const unsigned int* groupPixelValues,
+    const unsigned int* groupStartIndices,
+    const unsigned int* groupCounts,
+    const unsigned int numGroups,
+    unsigned char* edgeVisited,      // Edge visited array: size = (height+1) * (width+1) * 4
+    unsigned char* pixelProcessed,   // Pixel processed array: size = width * height (to track starting pixels)
+    uint2* outputContours,
+    unsigned int* outputCounts,
+    unsigned int* outputSubjectIDs,
+    unsigned int* outputClipperIDs,
+    unsigned int* outputSubjectCounts,
+    unsigned int* outputClipperCounts,
+    const unsigned int width,
+    const unsigned int height,
+    const unsigned int maxPointsPerContour)
+{
+    unsigned int groupIdx = blockIdx.x;
+
+    if (groupIdx >= numGroups) {
+        return;
+    }
+
+    unsigned int targetValue = groupPixelValues[groupIdx];
+    unsigned int groupStart = groupStartIndices[groupIdx];
+    unsigned int groupCount = groupCounts[groupIdx];
+
+    unsigned int contourCount = 0;
+    const unsigned int maxContoursPerGroup = 32;
+    const unsigned int maxIDsPerGroup = 256;
+
+    __shared__ unsigned int sharedSubjectIDs[256];
+    __shared__ unsigned int sharedClipperIDs[256];
+    __shared__ unsigned int sharedSubjectCount;
+    __shared__ unsigned int sharedClipperCount;
+
+    if (threadIdx.x == 0) {
+        for (unsigned int i = 0; i < groupCount && contourCount < maxContoursPerGroup; ++i) {
+            unsigned int sortedIdx = groupStart + i;
+            unsigned int pixelIdx = sortedIndices[sortedIdx];
+
+            // Skip if this pixel was already processed as part of another contour
+            if (pixelProcessed[pixelIdx] != 0) {
+                continue;
+            }
+
+            // Check if this pixel is on the boundary (has at least one neighbor not in same region)
+            // Use overlay bitmap to check for same intersection region
+            int px = pixelIdx % width;
+            int py = pixelIdx / width;
+            bool isBoundary = false;
+
+            if (!isSameIntersectionRegion(overlayBitmap, px - 1, py, targetValue, width, height) ||
+                !isSameIntersectionRegion(overlayBitmap, px + 1, py, targetValue, width, height) ||
+                !isSameIntersectionRegion(overlayBitmap, px, py - 1, targetValue, width, height) ||
+                !isSameIntersectionRegion(overlayBitmap, px, py + 1, targetValue, width, height)) {
+                isBoundary = true;
+            }
+
+            if (!isBoundary) {
+                // Interior pixel, mark as processed and skip
+                pixelProcessed[pixelIdx] = 1;
+                continue;
+            }
+
+            // This is a boundary pixel, trace the contour
+            unsigned int localCount = 0;
+            uint2* contourOutput = outputContours + groupIdx * maxPointsPerContour;
+            unsigned int currentOffset = outputCounts[groupIdx];
+
+            unsigned int markerIdx = 0;
+            if (contourCount > 0) {
+                if (currentOffset >= maxPointsPerContour - 1) {
+                    break;
+                }
+                markerIdx = currentOffset;
+                contourOutput[currentOffset].x = 0xFFFFFFFF;
+                contourOutput[currentOffset].y = 0;
+                currentOffset++;
+                outputCounts[groupIdx]++;
+            }
+
+            traceBorderContour(
+                contourBitmap,
+                overlayBitmap,
+                pixelIdx,
+                targetValue,
+                edgeVisited,
+                contourOutput + currentOffset,
+                &localCount,
+                sharedSubjectIDs,
+                sharedClipperIDs,
+                &sharedSubjectCount,
+                &sharedClipperCount,
+                width,
+                height,
+                maxPointsPerContour - currentOffset,
+                groupIdx,
+                contourCount);
+
+            // Mark all pixels in this group that are adjacent to the traced boundary
+            // For simplicity, mark the starting pixel as processed
+            pixelProcessed[pixelIdx] = 1;
+
+            if (contourCount == 0) {
+                for (unsigned int j = 0; j < sharedSubjectCount && j < maxIDsPerGroup; ++j) {
+                    outputSubjectIDs[groupIdx * maxIDsPerGroup + j] = sharedSubjectIDs[j];
+                }
+                for (unsigned int j = 0; j < sharedClipperCount && j < maxIDsPerGroup; ++j) {
+                    outputClipperIDs[groupIdx * maxIDsPerGroup + j] = sharedClipperIDs[j];
+                }
+                outputSubjectCounts[groupIdx] = sharedSubjectCount;
+                outputClipperCounts[groupIdx] = sharedClipperCount;
+            } else {
+                contourOutput[markerIdx].y = localCount;
+            }
+
+            outputCounts[groupIdx] += localCount;
+            contourCount++;
+
+            // After tracing, mark all boundary pixels of this contour as processed
+            // by scanning through the group and checking if they're on traced edges
+            // (This is a simplified approach - mark all boundary pixels in group)
+            for (unsigned int j = 0; j < groupCount; ++j) {
+                unsigned int pIdx = sortedIndices[groupStart + j];
+                int ppx = pIdx % width;
+                int ppy = pIdx / width;
+
+                // Check if this pixel has a neighbor not in same region (is boundary)
+                // Use overlay bitmap for same intersection region check
+                if (!isSameIntersectionRegion(overlayBitmap, ppx - 1, ppy, targetValue, width, height) ||
+                    !isSameIntersectionRegion(overlayBitmap, ppx + 1, ppy, targetValue, width, height) ||
+                    !isSameIntersectionRegion(overlayBitmap, ppx, ppy - 1, targetValue, width, height) ||
+                    !isSameIntersectionRegion(overlayBitmap, ppx, ppy + 1, targetValue, width, height)) {
+                    pixelProcessed[pIdx] = 1;
+                }
             }
         }
     }

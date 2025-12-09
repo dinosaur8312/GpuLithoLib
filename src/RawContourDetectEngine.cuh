@@ -113,8 +113,9 @@ __global__ void extractContours_kernel(
     OperationType opType);
 
 /**
- * @brief GPU kernel for parallel contour tracing using Suzuki-Abe algorithm
+ * @brief GPU kernel for parallel contour tracing using pixel-following algorithm
  * Each block processes one pixel value group (one contour component)
+ * Note: This algorithm may not handle single-pixel-width protrusions correctly
  */
 __global__ void traceContoursParallel_kernel(
     const unsigned int* contourBitmap,
@@ -126,6 +127,43 @@ __global__ void traceContoursParallel_kernel(
     const unsigned int* groupCounts,
     const unsigned int numGroups,
     unsigned char* visited,
+    uint2* outputContours,
+    unsigned int* outputCounts,
+    unsigned int* outputSubjectIDs,
+    unsigned int* outputClipperIDs,
+    unsigned int* outputSubjectCounts,
+    unsigned int* outputClipperCounts,
+    const unsigned int width,
+    const unsigned int height,
+    const unsigned int maxPointsPerContour);
+
+/**
+ * @brief GPU kernel for parallel contour tracing using border-following algorithm
+ *
+ * This kernel uses the Suzuki-Abe style border-following algorithm that traces
+ * the boundary between foreground and background pixels. It correctly handles
+ * single-pixel-width protrusions by tracing both sides of the protrusion as
+ * part of a continuous boundary.
+ *
+ * Key differences from traceContoursParallel_kernel:
+ * - Traces edges between pixels, not pixel centers
+ * - Outputs vertex coordinates (grid corners), not pixel coordinates
+ * - Uses edge-based visited tracking instead of pixel-based
+ * - Handles thin protrusions and dead-ends correctly
+ *
+ * Each block processes one pixel value group (one contour component)
+ */
+__global__ void traceContoursParallelBorder_kernel(
+    const unsigned int* contourBitmap,
+    const unsigned int* overlayBitmap,
+    const unsigned int* sortedIndices,
+    const unsigned int* sortedValues,
+    const unsigned int* groupPixelValues,
+    const unsigned int* groupStartIndices,
+    const unsigned int* groupCounts,
+    const unsigned int numGroups,
+    unsigned char* edgeVisited,      // Edge visited array: size = (height+1) * (width+1) * 4
+    unsigned char* pixelProcessed,   // Pixel processed array: size = width * height
     uint2* outputContours,
     unsigned int* outputCounts,
     unsigned int* outputSubjectIDs,
